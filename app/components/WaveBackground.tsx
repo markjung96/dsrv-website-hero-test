@@ -20,34 +20,34 @@ interface ColorScheme {
 
 const COLOR_PRESETS: Record<WaveVariant, ColorScheme> = {
   portal: {
-    color1: [0.69, 0.66, 0.78],
-    color2: [0.31, 0.78, 0.63],
-    color3: [0.16, 0.38, 0.91],
+    color1: [0.69, 0.66, 0.78],  // #B0A8C8 lavender (left)
+    color2: [0.31, 0.78, 0.63],  // #50C8A0 green-cyan (center)
+    color3: [0.16, 0.38, 0.91],  // #2860E8 deep blue (right)
   },
   allThatNode: {
-    color1: [0.47, 0.82, 0.72],
-    color2: [0.41, 0.72, 0.82],
-    color3: [0.50, 0.72, 0.85],
+    color1: [0.47, 0.82, 0.72],  // #78D0B8 soft green-teal
+    color2: [0.41, 0.72, 0.82],  // #68B8D0 blue-teal
+    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
   },
   walletHub: {
-    color1: [0.44, 0.82, 0.78],
-    color2: [0.41, 0.69, 0.82],
-    color3: [0.50, 0.72, 0.85],
+    color1: [0.44, 0.82, 0.78],  // #70D0C8 soft cyan
+    color2: [0.41, 0.69, 0.82],  // #68B0D0 teal-blue
+    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
   },
   stablecoin: {
-    color1: [0.56, 0.75, 0.88],
-    color2: [0.47, 0.69, 0.85],
-    color3: [0.50, 0.75, 0.82],
+    color1: [0.56, 0.75, 0.88],  // #90C0E0 light blue
+    color2: [0.47, 0.69, 0.85],  // #78B0D8 medium blue
+    color3: [0.50, 0.75, 0.82],  // #80C0D0 blue-cyan
   },
   stakingHub: {
-    color1: [0.28, 0.47, 0.85],
-    color2: [0.38, 0.72, 0.78],
-    color3: [0.55, 0.78, 0.44],
+    color1: [0.28, 0.47, 0.85],  // #4878D8 blue (dominant left)
+    color2: [0.38, 0.72, 0.78],  // #60B8C8 cyan (center)
+    color3: [0.55, 0.78, 0.44],  // #8CC870 green (right rainbow hint)
   },
   custody: {
-    color1: [0.75, 0.50, 0.69],
-    color2: [0.40, 0.69, 0.72],
-    color3: [0.50, 0.58, 0.82],
+    color1: [0.75, 0.50, 0.69],  // #C080B0 pink-mauve (right)
+    color2: [0.40, 0.69, 0.72],  // #66B0B8 teal (center)
+    color3: [0.50, 0.58, 0.82],  // #8094D0 blue-lavender (left)
   },
 };
 
@@ -62,6 +62,7 @@ const FRAGMENT_SHADER = `
 precision highp float;
 
 uniform float u_time;
+uniform float u_seed;
 uniform vec2 u_resolution;
 uniform float u_dpr;
 uniform vec3 u_color1;
@@ -116,7 +117,6 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
-// Low-octave fbm for very smooth, large shapes
 float fbm2(vec3 p) {
   return snoise(p) * 0.6 + snoise(p * 2.0) * 0.3 + snoise(p * 4.0) * 0.1;
 }
@@ -125,44 +125,39 @@ void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
 
-  float t = u_time * 0.06;
+  float t = u_time * 0.06 + u_seed;
 
-  // Very large scale, stretched vertically — curtain/swell shapes
   float sx = uv.x * aspect * 0.15;
   float sy = uv.y * 0.6;
 
-  // Slow left → right flow
   float flow = t * 0.3;
 
-  // 2-3 large sweeping curtain bands
-  float swell1 = fbm2(vec3(sx - flow, sy, t * 0.08));
-  float swell2 = fbm2(vec3(sx * 0.6 - flow * 0.7 + 4.0, sy * 0.8, t * 0.06));
+  float swell1 = fbm2(vec3(sx - flow, sy, t * 0.08 + u_seed * 1.7));
+  float swell2 = fbm2(vec3(sx * 0.6 - flow * 0.7 + 4.0 + u_seed * 2.3, sy * 0.8, t * 0.06));
+  float swell3 = fbm2(vec3(sx * 1.3 + flow * 0.4 + 8.0, sy * 1.2, t * 0.1 + u_seed * 3.1));
 
-  // Subtle edge warp — very gentle undulation
-  float warp = snoise(vec3(sx * 0.3 - flow * 0.5, sy * 0.4, t * 0.05)) * 0.08;
+  float warp = snoise(vec3(sx * 0.3 - flow * 0.5, sy * 0.4, t * 0.05 + u_seed * 0.9)) * 0.12;
+  float warp2 = snoise(vec3(sx * 0.7 + 5.0 + u_seed * 1.4, sy * 0.6 - flow * 0.2, t * 0.07)) * 0.08;
 
-  // Combined wave value
-  float wave = swell1 * 0.6 + swell2 * 0.4 + warp;
+  float wave = swell1 * 0.45 + swell2 * 0.3 + swell3 * 0.15 + warp + warp2;
 
-  // Smooth gradient between 3 colors — large, soft transitions
-  float blend1 = smoothstep(-0.3, 0.1, wave);
-  float blend2 = smoothstep(-0.05, 0.3, wave);
+  float blend1 = smoothstep(-0.35, 0.15, wave);
+  float blend2 = smoothstep(-0.08, 0.35, wave);
 
   vec3 color = mix(u_color1, u_color2, blend1);
   color = mix(color, u_color3, blend2);
 
-  // Subtle bright edge at major color transition
-  float edge = smoothstep(0.0, 0.04, abs(wave - 0.0)) ;
+  float edge = smoothstep(0.0, 0.04, abs(wave - 0.0));
   color += vec3((1.0 - edge) * 0.06);
 
-  // Vertical stripes
+  // Vertical stripes — bolder
   float cssX = gl_FragCoord.x / u_dpr;
   float stripePos = fract(cssX / 42.0);
-  float bandGrad = pow(1.0 - stripePos, 2.0);
-  float stripeFade = smoothstep(0.12, 0.88, uv.y);
+  float bandGrad = pow(1.0 - stripePos, 1.2);
+  float stripeFade = smoothstep(0.08, 0.92, uv.y);
   float colorDepth = 1.0 - dot(color, vec3(0.333));
-  float reactivity = 0.2 + colorDepth * 0.8;
-  float stripeEffect = bandGrad * 0.10 * stripeFade * reactivity;
+  float reactivity = 0.25 + colorDepth * 0.75;
+  float stripeEffect = bandGrad * 0.18 * stripeFade * reactivity;
   color = color + (vec3(1.0) - color) * stripeEffect;
 
   gl_FragColor = vec4(color, 1.0);
@@ -223,11 +218,14 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
 
     const aPosition = gl.getAttribLocation(program, "a_position");
     const uTime = gl.getUniformLocation(program, "u_time");
+    const uSeed = gl.getUniformLocation(program, "u_seed");
     const uResolution = gl.getUniformLocation(program, "u_resolution");
     const uDpr = gl.getUniformLocation(program, "u_dpr");
     const uColor1 = gl.getUniformLocation(program, "u_color1");
     const uColor2 = gl.getUniformLocation(program, "u_color2");
     const uColor3 = gl.getUniformLocation(program, "u_color3");
+
+    const seed = Math.random() * 100;
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio, 2);
@@ -254,6 +252,7 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
       const dpr = Math.min(window.devicePixelRatio, 2);
       const colors = colorsRef.current;
       gl!.uniform1f(uTime, (performance.now() - startTime) / 1000);
+      gl!.uniform1f(uSeed, seed);
       gl!.uniform2f(uResolution, canvas!.width, canvas!.height);
       gl!.uniform1f(uDpr, dpr);
       gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);

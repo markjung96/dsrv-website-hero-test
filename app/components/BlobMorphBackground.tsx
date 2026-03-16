@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const CYCLE = 36;
+const CYCLE = 24;
 
 const FRAMES = [
   {
@@ -14,7 +14,14 @@ const FRAMES = [
   },
   {
     blobs: [
-      { src: "/blobs/frame2/blob-c.svg", left: "-15.2%", top: "-38.7%", width: "89.7%", height: "133.8%", rotate: -13.15 },
+      {
+        src: "/blobs/frame2/blob-c.svg",
+        left: "-15.2%",
+        top: "-38.7%",
+        width: "89.7%",
+        height: "133.8%",
+        rotate: -13.15,
+      },
       { src: "/blobs/frame2/blob-b.svg", left: "56.2%", top: "0%", width: "36.8%", height: "55%", rotate: 28.05 },
       { src: "/blobs/frame2/blob-a.svg", left: "50%", top: "35%", width: "47.6%", height: "60.6%", rotate: 0 },
     ],
@@ -116,11 +123,7 @@ export default function BlobMorphBackground() {
           </div>
         ))}
 
-        <div
-          ref={stripesRef}
-          className="absolute inset-0 pointer-events-none"
-          style={{ zIndex: 10 }}
-        />
+        <div ref={stripesRef} className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }} />
       </div>
     </>
   );

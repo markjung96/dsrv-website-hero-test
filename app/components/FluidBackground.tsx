@@ -172,14 +172,14 @@ void main() {
   float stripePos = fract(cssX / stripeWidth);
 
   float bandGrad = 1.0 - stripePos;
-  bandGrad = pow(bandGrad, 2.0);
+  bandGrad = pow(bandGrad, 1.2);
 
-  float stripeFade = smoothstep(0.12, 0.88, uv.y);
+  float stripeFade = smoothstep(0.08, 0.92, uv.y);
 
   float colorDepth = 1.0 - dot(color, vec3(0.333));
-  float reactivity = 0.2 + colorDepth * 0.8;
+  float reactivity = 0.25 + colorDepth * 0.75;
 
-  float stripeEffect = bandGrad * 0.12 * stripeFade * reactivity;
+  float stripeEffect = bandGrad * 0.18 * stripeFade * reactivity;
   color = color + (vec3(1.0) - color) * stripeEffect;
 
   gl_FragColor = vec4(color, 1.0);
