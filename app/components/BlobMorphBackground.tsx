@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const CYCLE = 18;
+const CYCLE = 36;
 
 const FRAMES = [
   {
@@ -52,38 +52,38 @@ export default function BlobMorphBackground() {
     <>
       <style>{`
         @keyframes morphFade1 {
-          0%, 10%   { opacity: 1; }
-          28%, 33%  { opacity: 0; }
-          90%, 100% { opacity: 1; }
+          0%, 20%   { opacity: 1; }
+          30%, 33%  { opacity: 0; }
+          92%, 100% { opacity: 1; }
         }
         @keyframes morphFade2 {
-          0%, 10%   { opacity: 0; }
-          28%, 43%  { opacity: 1; }
-          61%, 100% { opacity: 0; }
+          0%, 20%   { opacity: 0; }
+          30%, 53%  { opacity: 1; }
+          63%, 100% { opacity: 0; }
         }
         @keyframes morphFade3 {
-          0%, 43%   { opacity: 0; }
-          61%, 76%  { opacity: 1; }
-          90%, 100% { opacity: 0; }
+          0%, 53%   { opacity: 0; }
+          63%, 83%  { opacity: 1; }
+          92%, 100% { opacity: 0; }
         }
 
         @keyframes drift1 {
-          0%, 10%   { transform: translate(0%, 0%) scale(1); }
-          28%, 33%  { transform: translate(1.5%, -2%) scale(1.03); }
-          61%, 76%  { transform: translate(-1%, 1.5%) scale(0.98); }
-          90%, 100% { transform: translate(0%, 0%) scale(1); }
+          0%, 20%   { transform: translate(0%, 0%) scale(1); }
+          30%, 53%  { transform: translate(1%, -1.2%) scale(1.02); }
+          63%, 83%  { transform: translate(-0.6%, 0.8%) scale(0.99); }
+          92%, 100% { transform: translate(0%, 0%) scale(1); }
         }
         @keyframes drift2 {
-          0%, 10%   { transform: translate(0%, 0%) scale(1); }
-          28%, 33%  { transform: translate(-1%, 1%) scale(1.02); }
-          61%, 76%  { transform: translate(2%, -1.5%) scale(0.97); }
-          90%, 100% { transform: translate(0%, 0%) scale(1); }
+          0%, 20%   { transform: translate(0%, 0%) scale(1); }
+          30%, 53%  { transform: translate(-0.6%, 0.6%) scale(1.01); }
+          63%, 83%  { transform: translate(1.2%, -0.8%) scale(0.98); }
+          92%, 100% { transform: translate(0%, 0%) scale(1); }
         }
         @keyframes drift3 {
-          0%, 10%   { transform: translate(0%, 0%) scale(1); }
-          28%, 33%  { transform: translate(1%, 2%) scale(0.98); }
-          61%, 76%  { transform: translate(-1.5%, -1%) scale(1.04); }
-          90%, 100% { transform: translate(0%, 0%) scale(1); }
+          0%, 20%   { transform: translate(0%, 0%) scale(1); }
+          30%, 53%  { transform: translate(0.6%, 1%) scale(0.99); }
+          63%, 83%  { transform: translate(-0.8%, -0.5%) scale(1.02); }
+          92%, 100% { transform: translate(0%, 0%) scale(1); }
         }
 
         .morph-frame-1 { animation: morphFade1 ${CYCLE}s ease-in-out infinite, drift1 ${CYCLE}s ease-in-out infinite; }
