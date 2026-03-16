@@ -20,9 +20,9 @@ interface ColorScheme {
 
 const COLOR_PRESETS: Record<FluidVariant, ColorScheme> = {
   portal: {
-    color1: [0.63, 0.76, 0.91],  // #A0C2E8 soft sky blue
-    color2: [0.38, 0.66, 0.88],  // #60A8E0 medium cyan-blue
-    color3: [0.22, 0.41, 0.85],  // #3868D8 deeper blue
+    color1: [0.69, 0.66, 0.78],  // #B0A8C8 lavender (left)
+    color2: [0.31, 0.78, 0.63],  // #50C8A0 green-cyan (center)
+    color3: [0.16, 0.38, 0.91],  // #2860E8 deep blue (right)
   },
   allThatNode: {
     color1: [0.47, 0.82, 0.72],  // #78D0B8 soft green-teal
@@ -40,14 +40,14 @@ const COLOR_PRESETS: Record<FluidVariant, ColorScheme> = {
     color3: [0.50, 0.75, 0.82],  // #80C0D0 blue-cyan
   },
   stakingHub: {
-    color1: [0.35, 0.53, 0.82],  // #5888D0 blue
-    color2: [0.41, 0.69, 0.82],  // #68B0D0 cyan-blue
-    color3: [0.47, 0.78, 0.66],  // #78C8A8 teal-green
+    color1: [0.28, 0.47, 0.85],  // #4878D8 blue (dominant left)
+    color2: [0.38, 0.72, 0.78],  // #60B8C8 cyan (center)
+    color3: [0.55, 0.78, 0.44],  // #8CC870 green (right rainbow hint)
   },
   custody: {
-    color1: [0.78, 0.60, 0.72],  // #C898B8 pink-mauve
-    color2: [0.47, 0.72, 0.75],  // #78B8C0 soft teal
-    color3: [0.53, 0.63, 0.82],  // #88A0D0 blue-lavender
+    color1: [0.75, 0.50, 0.69],  // #C080B0 pink-mauve (right)
+    color2: [0.40, 0.69, 0.72],  // #66B0B8 teal (center)
+    color3: [0.50, 0.58, 0.82],  // #8094D0 blue-lavender (left)
   },
 };
 
