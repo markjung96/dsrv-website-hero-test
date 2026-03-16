@@ -19,35 +19,35 @@ interface ColorScheme {
 }
 
 const COLOR_PRESETS: Record<FluidVariant, ColorScheme> = {
-  stablecoin: {
-    color1: [0.314, 0.561, 0.827], // #508FD3
-    color2: [0.184, 0.290, 0.894], // #2F4AE4
-    color3: [0.231, 0.357, 0.996], // #3B5BFE
-  },
   portal: {
-    color1: [0.32, 0.72, 0.90],  // bright cyan
-    color2: [0.22, 0.48, 0.88],  // blue
-    color3: [0.16, 0.34, 0.78],  // deep blue
+    color1: [0.63, 0.76, 0.91],  // #A0C2E8 soft sky blue
+    color2: [0.38, 0.66, 0.88],  // #60A8E0 medium cyan-blue
+    color3: [0.22, 0.41, 0.85],  // #3868D8 deeper blue
   },
   allThatNode: {
-    color1: [0.20, 0.78, 0.45],  // vivid green
-    color2: [0.18, 0.68, 0.72],  // teal
-    color3: [0.22, 0.45, 0.85],  // blue
+    color1: [0.47, 0.82, 0.72],  // #78D0B8 soft green-teal
+    color2: [0.41, 0.72, 0.82],  // #68B8D0 blue-teal
+    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
   },
   walletHub: {
-    color1: [0.20, 0.78, 0.50],  // vivid green
-    color2: [0.15, 0.70, 0.75],  // cyan
-    color3: [0.24, 0.46, 0.82],  // blue
+    color1: [0.44, 0.82, 0.78],  // #70D0C8 soft cyan
+    color2: [0.41, 0.69, 0.82],  // #68B0D0 teal-blue
+    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
+  },
+  stablecoin: {
+    color1: [0.56, 0.75, 0.88],  // #90C0E0 light blue
+    color2: [0.47, 0.69, 0.85],  // #78B0D8 medium blue
+    color3: [0.50, 0.75, 0.82],  // #80C0D0 blue-cyan
   },
   stakingHub: {
-    color1: [0.22, 0.40, 0.88],  // blue
-    color2: [0.20, 0.65, 0.82],  // cyan
-    color3: [0.30, 0.72, 0.48],  // green
+    color1: [0.35, 0.53, 0.82],  // #5888D0 blue
+    color2: [0.41, 0.69, 0.82],  // #68B0D0 cyan-blue
+    color3: [0.47, 0.78, 0.66],  // #78C8A8 teal-green
   },
   custody: {
-    color1: [0.75, 0.42, 0.70],  // vivid pink/mauve
-    color2: [0.35, 0.45, 0.85],  // blue
-    color3: [0.30, 0.75, 0.68],  // teal/mint
+    color1: [0.78, 0.60, 0.72],  // #C898B8 pink-mauve
+    color2: [0.47, 0.72, 0.75],  // #78B8C0 soft teal
+    color3: [0.53, 0.63, 0.82],  // #88A0D0 blue-lavender
   },
 };
 

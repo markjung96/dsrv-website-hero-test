@@ -1,10 +1,10 @@
 import FluidBackground, { type FluidVariant } from "./components/FluidBackground";
 
 const heroes: { variant: FluidVariant; title: string; subtitle: string }[] = [
-  { variant: "stablecoin", title: "스테이블코인 매니저", subtitle: "온체인 결제를 단일표준화하는 오케스트레이션 엔진" },
   { variant: "portal", title: "DSRV Portal", subtitle: "한 번의 연동으로 누리는 쉽고 강력한 블록체인 인프라" },
   { variant: "allThatNode", title: "All That Node", subtitle: "복잡한 멀티체인 인프라를 하나로 잇는 가장 견고한 게이트웨이" },
   { variant: "walletHub", title: "Wallet Hub", subtitle: "보안과 사용성을 동시에 확보하는 MPC 지갑 인터페이스" },
+  { variant: "stablecoin", title: "Stablecoin Manager", subtitle: "온체인 결제를 단일표준화하는 오케스트레이션 엔진" },
   { variant: "stakingHub", title: "Staking Hub", subtitle: "기업 자산의 안전한 운용과 투명한 증빙을 위한 스테이킹 솔루션" },
   { variant: "custody", title: "Custody", subtitle: "모든 위협으로부터 자산을 격리하는 엔터프라이즈 수탁의 기준" },
 ];
