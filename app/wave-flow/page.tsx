@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import FluidBackground, { type FluidVariant } from "../components/FluidBackground";
+import WaveBackground, { type WaveVariant } from "../components/WaveBackground";
 import VersionSelector from "../components/VersionSelector";
 
-const heroes: { variant: FluidVariant; title: string; subtitle: string }[] = [
+const heroes: { variant: WaveVariant; title: string; subtitle: string }[] = [
   { variant: "portal", title: "DSRV Portal", subtitle: "한 번의 연동으로 누리는 쉽고 강력한 블록체인 인프라" },
   { variant: "allThatNode", title: "All That Node", subtitle: "복잡한 멀티체인 인프라를 하나로 잇는 가장 견고한 게이트웨이" },
   { variant: "walletHub", title: "Wallet Hub", subtitle: "보안과 사용성을 동시에 확보하는 MPC 지갑 인터페이스" },
@@ -13,13 +13,13 @@ const heroes: { variant: FluidVariant; title: string; subtitle: string }[] = [
   { variant: "custody", title: "Custody", subtitle: "모든 위협으로부터 자산을 격리하는 엔터프라이즈 수탁의 기준" },
 ];
 
-export default function RandomColorPage() {
+export default function WaveFlowPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const { variant, title, subtitle } = heroes[activeIdx];
 
   return (
     <main className="relative h-screen overflow-hidden bg-white">
-      <FluidBackground key={variant} variant={variant} />
+      <WaveBackground key={variant} variant={variant} />
 
       <VersionSelector />
 
