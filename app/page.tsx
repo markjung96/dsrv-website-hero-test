@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import FluidBackground, { type FluidVariant } from "./components/FluidBackground";
 
 const heroes: { variant: FluidVariant; title: string; subtitle: string }[] = [
@@ -10,27 +13,45 @@ const heroes: { variant: FluidVariant; title: string; subtitle: string }[] = [
 ];
 
 export default function Home() {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const { variant, title, subtitle } = heroes[activeIdx];
+
   return (
-    <main className="bg-white">
-      {heroes.map(({ variant, title, subtitle }) => (
-        <section key={variant} className="relative h-screen overflow-hidden">
-          <FluidBackground variant={variant} />
-          <div className="relative z-10 flex flex-col items-center justify-center h-full text-white text-center px-4">
-            <p className="text-[20px] font-bold leading-[1.4] tracking-[-0.2px] mb-[12px]">
-              {subtitle}
-            </p>
-            <h1 className="text-[56px] font-bold leading-none tracking-[-0.56px] mb-[24px]">
-              {title}
-            </h1>
-            <button className="flex items-center gap-[48px] h-[72px] px-[24px] backdrop-blur-[50px] bg-[rgba(245,246,255,0.4)] border border-transparent text-white text-[24px] font-bold leading-[1.4] tracking-[-0.24px] cursor-pointer transition-all duration-300 hover:bg-[rgba(245,246,255,0.55)]">
-              <span className="min-w-[120px]">문의하기</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        </section>
-      ))}
+    <main className="relative h-screen overflow-hidden bg-white">
+      <FluidBackground key={variant} variant={variant} />
+
+      {/* Header tabs */}
+      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-center gap-1 px-4 py-4">
+        {heroes.map((h, i) => (
+          <button
+            key={h.variant}
+            onClick={() => setActiveIdx(i)}
+            className={`px-4 py-2 text-[14px] font-semibold rounded-full transition-all duration-200 cursor-pointer ${
+              i === activeIdx
+                ? "bg-white/30 text-white backdrop-blur-md"
+                : "text-white/60 hover:text-white/90 hover:bg-white/10"
+            }`}
+          >
+            {h.title}
+          </button>
+        ))}
+      </nav>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center h-full text-white text-center px-4">
+        <p className="text-[20px] font-bold leading-[1.4] tracking-[-0.2px] mb-[12px]">
+          {subtitle}
+        </p>
+        <h1 className="text-[56px] font-bold leading-none tracking-[-0.56px] mb-[24px]">
+          {title}
+        </h1>
+        <button className="flex items-center gap-[48px] h-[72px] px-[24px] backdrop-blur-[50px] bg-[rgba(245,246,255,0.4)] border border-transparent text-white text-[24px] font-bold leading-[1.4] tracking-[-0.24px] cursor-pointer transition-all duration-300 hover:bg-[rgba(245,246,255,0.55)]">
+          <span className="min-w-[120px]">문의하기</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
     </main>
   );
 }
