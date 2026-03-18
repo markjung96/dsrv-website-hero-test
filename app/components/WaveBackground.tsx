@@ -68,6 +68,7 @@ uniform float u_dpr;
 uniform vec3 u_color1;
 uniform vec3 u_color2;
 uniform vec3 u_color3;
+uniform vec2 u_mouse;
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -127,6 +128,13 @@ void main() {
 
   float t = u_time * 0.06 + u_seed;
 
+  // Mouse interaction
+  vec2 mouseUV = u_mouse;
+  float mouseDist = length(uv - mouseUV);
+  vec2 attractDir = mouseUV - uv;
+  float attractStr = exp(-mouseDist * mouseDist * 3.0) * 0.10;
+  uv += attractDir * attractStr;
+
   float sx = uv.x * aspect * 0.15;
   float sy = uv.y * 0.6;
 
@@ -159,6 +167,11 @@ void main() {
   float stripeEffect = bandGrad * 0.18 * reactivity;
   color = color + (vec3(1.0) - color) * stripeEffect;
 
+  // Mouse glow
+  float mDist = length(gl_FragCoord.xy / u_resolution - u_mouse);
+  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.25;
+  color = mix(color, vec3(1.0), mouseGlow);
+
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -170,6 +183,7 @@ interface WaveBackgroundProps {
 export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const mouseRef = useRef<[number, number]>([0.5, 0.5]);
   const colorsRef = useRef(COLOR_PRESETS[variant]);
 
   useEffect(() => {
@@ -223,6 +237,7 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
     const uColor1 = gl.getUniformLocation(program, "u_color1");
     const uColor2 = gl.getUniformLocation(program, "u_color2");
     const uColor3 = gl.getUniformLocation(program, "u_color3");
+    const uMouse = gl.getUniformLocation(program, "u_mouse");
 
     const seed = Math.random() * 100;
 
@@ -236,6 +251,15 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
 
     resize();
     window.addEventListener("resize", resize);
+
+    function handleMouseMove(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      mouseRef.current = [
+        (e.clientX - rect.left) / rect.width,
+        1.0 - (e.clientY - rect.top) / rect.height,
+      ];
+    }
+    window.addEventListener("mousemove", handleMouseMove);
 
     const startTime = performance.now();
 
@@ -257,6 +281,7 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
       gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);
       gl!.uniform3f(uColor2, colors.color2[0], colors.color2[1], colors.color2[2]);
       gl!.uniform3f(uColor3, colors.color3[0], colors.color3[1], colors.color3[2]);
+      gl!.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
 
       gl!.drawArrays(gl!.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
@@ -267,6 +292,7 @@ export default function WaveBackground({ variant = "stablecoin" }: WaveBackgroun
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
 

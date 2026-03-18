@@ -57,6 +57,8 @@ export default function BlobMorphBackground() {
     BLOB_FRAMES.map(() => [null, null, null])
   );
   const wrapperRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
+  const mouseRef = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
+  const smoothMouse = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
 
   useEffect(() => {
     if (!stripesRef.current) return;
@@ -76,6 +78,14 @@ export default function BlobMorphBackground() {
   }, []);
 
   useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      mouseRef.current = {
+        x: e.clientX / window.innerWidth,
+        y: e.clientY / window.innerHeight,
+      };
+    }
+    window.addEventListener("mousemove", handleMouseMove);
+
     let animId: number;
     const start = performance.now();
 
@@ -84,15 +94,24 @@ export default function BlobMorphBackground() {
       const progress = (elapsed % CYCLE) / CYCLE;
       const { fromIdx, toIdx, t } = getInterpolation(progress);
 
+      // Smooth mouse follow
+      smoothMouse.current.x += (mouseRef.current.x - smoothMouse.current.x) * 0.05;
+      smoothMouse.current.y += (mouseRef.current.y - smoothMouse.current.y) * 0.05;
+      const mx = (smoothMouse.current.x - 0.5) * 2;
+      const my = (smoothMouse.current.y - 0.5) * 2;
+      const parallaxStrengths = [3.0, 5.0, 7.0]; // different per layer depth
+
       for (let bi = 0; bi < BLOB_FRAMES.length; bi++) {
         const frames = BLOB_FRAMES[bi];
         const from = frames[fromIdx];
         const to = frames[toIdx];
 
         const wrapper = wrapperRefs.current[bi];
+        const px = mx * parallaxStrengths[bi];
+        const py = my * parallaxStrengths[bi];
         if (wrapper) {
-          wrapper.style.left = `${lerp(from.left, to.left, t)}%`;
-          wrapper.style.top = `${lerp(from.top, to.top, t)}%`;
+          wrapper.style.left = `${lerp(from.left, to.left, t) + px}%`;
+          wrapper.style.top = `${lerp(from.top, to.top, t) + py}%`;
           wrapper.style.width = `${lerp(from.width, to.width, t)}%`;
           wrapper.style.height = `${lerp(from.height, to.height, t)}%`;
           wrapper.style.transform = `rotate(${lerp(from.rotate, to.rotate, t)}deg)`;
@@ -118,7 +137,10 @@ export default function BlobMorphBackground() {
     }
 
     animId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animId);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animId);
+    };
   }, []);
 
   return (
@@ -154,6 +176,20 @@ export default function BlobMorphBackground() {
           ))}
         </div>
       ))}
+
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 5, background: "radial-gradient(circle 300px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.35), transparent)" }}
+        ref={(el) => {
+          if (!el) return;
+          const update = () => {
+            el.style.setProperty("--mouse-x", `${smoothMouse.current.x * 100}%`);
+            el.style.setProperty("--mouse-y", `${smoothMouse.current.y * 100}%`);
+            requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+        }}
+      />
 
       <div ref={stripesRef} className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }} />
     </div>

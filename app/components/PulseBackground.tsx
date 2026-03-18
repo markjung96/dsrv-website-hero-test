@@ -16,6 +16,7 @@ uniform float u_time;
 uniform float u_seed;
 uniform vec2 u_resolution;
 uniform float u_dpr;
+uniform vec2 u_mouse;
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -122,6 +123,13 @@ void main() {
 
   vec2 st = vec2(uv.x * aspect, uv.y);
 
+  // Mouse interaction: attract field toward cursor
+  vec2 mouseST = vec2(u_mouse.x * aspect, u_mouse.y);
+  float mouseDist = length(st - mouseST);
+  vec2 attractDir = mouseST - st;
+  float attractStr = exp(-mouseDist * mouseDist * 2.5) * 0.12;
+  st += attractDir * attractStr;
+
   float rScale = min(1.0, aspect / 1.2);
   float narrow = clamp(1.0 - aspect / 1.0, 0.0, 1.0);
 
@@ -183,6 +191,11 @@ void main() {
   float lineWhite = thinLine * smoothstep(0.05, 0.35, field) * 0.13;
   color = mix(color, bg, lineWhite);
 
+  // Mouse glow
+  float mDist = length(gl_FragCoord.xy / u_resolution - u_mouse);
+  float mouseGlow = exp(-mDist * mDist * 4.0) * 0.35;
+  color = mix(color, blobColor * 1.3, mouseGlow * alpha);
+
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -190,6 +203,7 @@ void main() {
 export default function PulseBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const mouseRef = useRef<[number, number]>([0.5, 0.5]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -235,6 +249,7 @@ export default function PulseBackground() {
     const uSeed = gl.getUniformLocation(program, "u_seed");
     const uResolution = gl.getUniformLocation(program, "u_resolution");
     const uDpr = gl.getUniformLocation(program, "u_dpr");
+    const uMouse = gl.getUniformLocation(program, "u_mouse");
     const seed = Math.random() * 100;
 
     function resize() {
@@ -245,6 +260,15 @@ export default function PulseBackground() {
 
     resize();
     window.addEventListener("resize", resize);
+
+    function handleMouseMove(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      mouseRef.current = [
+        (e.clientX - rect.left) / rect.width,
+        1.0 - (e.clientY - rect.top) / rect.height,
+      ];
+    }
+    window.addEventListener("mousemove", handleMouseMove);
     const startTime = performance.now();
 
     function render() {
@@ -259,6 +283,7 @@ export default function PulseBackground() {
       gl!.uniform1f(uSeed, seed);
       gl!.uniform2f(uResolution, canvas!.width, canvas!.height);
       gl!.uniform1f(uDpr, dpr);
+      gl!.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
       gl!.drawArrays(gl!.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
     }
@@ -267,6 +292,7 @@ export default function PulseBackground() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
 

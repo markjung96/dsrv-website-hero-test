@@ -67,6 +67,7 @@ uniform float u_dpr;
 uniform vec3 u_color1;
 uniform vec3 u_color2;
 uniform vec3 u_color3;
+uniform vec2 u_mouse;
 
 // --- Simplex 3D noise (Ashima Arts) ---
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -134,6 +135,13 @@ void main() {
   float aspect = u_resolution.x / u_resolution.y;
   vec2 st = vec2(uv.x * aspect, uv.y);
 
+  // Mouse interaction
+  vec2 mouseST = vec2(u_mouse.x * aspect, u_mouse.y);
+  float mouseDist = length(st - mouseST);
+  vec2 attractDir = mouseST - st;
+  float attractStr = exp(-mouseDist * mouseDist * 3.0) * 0.12;
+  st += attractDir * attractStr;
+
   float t = u_time * 0.12;
 
   // Cyclic time offsets — prevents drift that causes color to fill the screen
@@ -180,6 +188,11 @@ void main() {
   float stripeEffect = bandGrad * 0.18 * reactivity;
   color = color + (vec3(1.0) - color) * stripeEffect;
 
+  // Mouse glow
+  float mDist = length(uv - u_mouse);
+  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.28;
+  color = mix(color, vec3(1.0), mouseGlow);
+
   gl_FragColor = vec4(color, 1.0);
 }
 `;
@@ -191,6 +204,7 @@ interface FluidBackgroundProps {
 export default function FluidBackground({ variant = "stablecoin" }: FluidBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const mouseRef = useRef<[number, number]>([0.5, 0.5]);
   const colorsRef = useRef(COLOR_PRESETS[variant]);
 
   useEffect(() => {
@@ -243,6 +257,7 @@ export default function FluidBackground({ variant = "stablecoin" }: FluidBackgro
     const uColor1 = gl.getUniformLocation(program, "u_color1");
     const uColor2 = gl.getUniformLocation(program, "u_color2");
     const uColor3 = gl.getUniformLocation(program, "u_color3");
+    const uMouse = gl.getUniformLocation(program, "u_mouse");
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio, 2);
@@ -254,6 +269,15 @@ export default function FluidBackground({ variant = "stablecoin" }: FluidBackgro
 
     resize();
     window.addEventListener("resize", resize);
+
+    function handleMouseMove(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      mouseRef.current = [
+        (e.clientX - rect.left) / rect.width,
+        1.0 - (e.clientY - rect.top) / rect.height,
+      ];
+    }
+    window.addEventListener("mousemove", handleMouseMove);
 
     const startTime = performance.now();
 
@@ -274,6 +298,7 @@ export default function FluidBackground({ variant = "stablecoin" }: FluidBackgro
       gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);
       gl!.uniform3f(uColor2, colors.color2[0], colors.color2[1], colors.color2[2]);
       gl!.uniform3f(uColor3, colors.color3[0], colors.color3[1], colors.color3[2]);
+      gl!.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
 
       gl!.drawArrays(gl!.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
@@ -284,6 +309,7 @@ export default function FluidBackground({ variant = "stablecoin" }: FluidBackgro
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
 
