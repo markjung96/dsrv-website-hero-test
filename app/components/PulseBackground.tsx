@@ -122,19 +122,24 @@ void main() {
 
   vec2 st = vec2(uv.x * aspect, uv.y);
 
-  // Main blob — FIXED center, slow morph (same as Bubble)
-  vec2 c1 = vec2(0.46 * aspect, 0.48);
-  float blob1 = morphBlob(st, c1, vec2(0.55, 0.38), tSlow, u_seed);
+  float rScale = min(1.0, aspect / 1.2);
+  float narrow = clamp(1.0 - aspect / 1.0, 0.0, 1.0);
 
-  // Secondary blob — drifts around slowly
-  vec2 c2Base = vec2(0.85 * aspect, 0.38);
+  // Main blob — FIXED center
+  vec2 c1 = vec2(0.50 * aspect, 0.48);
+  float blob1 = morphBlob(st, c1, vec2(0.45, 0.33) * rScale, tSlow, u_seed);
+
+  // Secondary blob — hidden below xl (1280px CSS width), pushed far right
+  float cssWidth = u_resolution.x / u_dpr;
+  float showBlob2 = step(1280.0, cssWidth);
+  vec2 c2Base = vec2(0.88 * aspect, 0.40);
   vec2 c2 = c2Base + vec2(
-    sin(u_time * 0.04 + u_seed * 1.7) * 0.12 * aspect,
-    cos(u_time * 0.03 + u_seed * 2.3) * 0.1
+    sin(u_time * 0.04 + u_seed * 1.7) * 0.06 * aspect,
+    cos(u_time * 0.03 + u_seed * 2.3) * 0.06
   );
-  float blob2 = morphBlob(st, c2, vec2(0.18, 0.20), tSlow + 5.0, u_seed + 10.0);
+  float blob2 = morphBlob(st, c2, vec2(0.15, 0.17), tSlow + 5.0, u_seed + 10.0) * showBlob2;
 
-  float field = max(blob1, blob2 * 0.8);
+  float field = max(blob1, blob2 * 0.7);
 
   // Color: multi-zone gradient from Figma palette
   float tColor = u_time * 0.05 + u_seed * 3.0;
