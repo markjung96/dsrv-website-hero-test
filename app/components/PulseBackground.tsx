@@ -2,55 +2,6 @@
 
 import { useEffect, useRef } from "react";
 
-export type FluidVariant =
-  | "stablecoin"
-  | "portal"
-  | "allThatNode"
-  | "walletHub"
-  | "stakingHub"
-  | "custody";
-
-type RGB = [number, number, number];
-
-interface ColorScheme {
-  color1: RGB;
-  color2: RGB;
-  color3: RGB;
-}
-
-const COLOR_PRESETS: Record<FluidVariant, ColorScheme> = {
-  portal: {
-    color1: [0.69, 0.66, 0.78],  // #B0A8C8 lavender (left)
-    color2: [0.31, 0.78, 0.63],  // #50C8A0 green-cyan (center)
-    color3: [0.16, 0.38, 0.91],  // #2860E8 deep blue (right)
-  },
-  allThatNode: {
-    color1: [0.47, 0.82, 0.72],  // #78D0B8 soft green-teal
-    color2: [0.41, 0.72, 0.82],  // #68B8D0 blue-teal
-    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
-  },
-  walletHub: {
-    color1: [0.44, 0.82, 0.78],  // #70D0C8 soft cyan
-    color2: [0.41, 0.69, 0.82],  // #68B0D0 teal-blue
-    color3: [0.50, 0.72, 0.85],  // #80B8D8 soft blue
-  },
-  stablecoin: {
-    color1: [0.56, 0.75, 0.88],  // #90C0E0 light blue
-    color2: [0.47, 0.69, 0.85],  // #78B0D8 medium blue
-    color3: [0.50, 0.75, 0.82],  // #80C0D0 blue-cyan
-  },
-  stakingHub: {
-    color1: [0.28, 0.47, 0.85],  // #4878D8 blue (dominant left)
-    color2: [0.38, 0.72, 0.78],  // #60B8C8 cyan (center)
-    color3: [0.55, 0.78, 0.44],  // #8CC870 green (right rainbow hint)
-  },
-  custody: {
-    color1: [0.75, 0.50, 0.69],  // #C080B0 pink-mauve (right)
-    color2: [0.40, 0.69, 0.72],  // #66B0B8 teal (center)
-    color3: [0.50, 0.58, 0.82],  // #8094D0 blue-lavender (left)
-  },
-};
-
 const VERTEX_SHADER = `
 attribute vec2 a_position;
 void main() {
@@ -62,13 +13,10 @@ const FRAGMENT_SHADER = `
 precision highp float;
 
 uniform float u_time;
+uniform float u_seed;
 uniform vec2 u_resolution;
 uniform float u_dpr;
-uniform vec3 u_color1;
-uniform vec3 u_color2;
-uniform vec3 u_color3;
 
-// --- Simplex 3D noise (Ashima Arts) ---
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
@@ -117,85 +65,126 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
-float fbm(vec3 p) {
-  float value = 0.0;
-  float amplitude = 0.5;
-  float frequency = 1.0;
-  for (int i = 0; i < 4; i++) {
-    value += amplitude * snoise(p * frequency);
-    amplitude *= 0.5;
-    frequency *= 2.0;
-  }
-  return value;
+// Blob shape — same as Bubble, slow morph only
+float morphBlob(vec2 st, vec2 center, vec2 radii, float t, float seed) {
+  vec2 delta = st - center;
+  float dist = length(delta / radii);
+  float angle = atan(delta.y, delta.x);
+
+  float a2 = 0.18 + 0.08 * sin(t * 0.15 + seed);
+  float a3 = 0.12 + 0.05 * cos(t * 0.12 + seed * 1.5);
+  float a4 = 0.05 + 0.025 * sin(t * 0.1 + seed * 2.0);
+
+  float r_mod = a2 * sin(2.0 * angle + t * 0.2 + seed)
+              + a3 * sin(3.0 * angle + t * 0.15 + seed * 1.7)
+              + a4 * sin(4.0 * angle + t * 0.18 + seed * 0.8);
+
+  float boundary = 1.0 + r_mod;
+  float d = dist / boundary;
+
+  float inner = smoothstep(1.05, 0.55, d);
+  float outer = smoothstep(1.25, 0.7, d);
+  return mix(outer * 0.25, 1.0, inner);
+}
+
+// Heartbeat: lub-dub with organic timing variation
+float heartbeat(float t, float seed) {
+  // Resting heartbeat ~2.2s cycle, gentle drift ±0.15s
+  float basePeriod = 2.2;
+  float drift = sin(t * 0.25 + seed) * 0.08 + sin(t * 0.17 + seed * 2.1) * 0.07;
+  float period = basePeriod + drift;
+
+  float cycle = mod(t + seed * 3.7, period);
+
+  // Lub (moderate, smooth attack)
+  float lub = exp(-cycle * 8.0) * 0.7;
+  // Dub (soft follow-up ~0.28s later)
+  float dubDelay = 0.28 + sin(t * 0.15 + seed * 1.3) * 0.02;
+  float dub = exp(-max(cycle - dubDelay, 0.0) * 10.0) * 0.4;
+
+  return max(lub, dub);
 }
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
+
+  float tReal = u_time;
+  float tSlow = u_time * 0.1 + u_seed;
+
+  // === HEARTBEAT THUMP ===
+  float thump = heartbeat(tReal, u_seed);
+
+  // Zoom toward screen center — whole scene briefly scales up
+  float zoom = 1.0 - thump * 0.07;
+  vec2 screenCenter = vec2(0.5, 0.5);
+  uv = (uv - screenCenter) * zoom + screenCenter;
+
   vec2 st = vec2(uv.x * aspect, uv.y);
 
-  float t = u_time * 0.12;
+  // Main blob — FIXED center, slow morph (same as Bubble)
+  vec2 c1 = vec2(0.46 * aspect, 0.48);
+  float blob1 = morphBlob(st, c1, vec2(0.55, 0.38), tSlow, u_seed);
 
-  // Cyclic time offsets — prevents drift that causes color to fill the screen
-  float cx1 = sin(t * 0.31) * 0.6;
-  float cy1 = cos(t * 0.23) * 0.6;
-  float cx2 = sin(t * 0.19 + 2.0) * 0.6;
-  float cy2 = cos(t * 0.37 + 3.0) * 0.6;
-  float cz  = sin(t * 0.11) * 0.4;
-  float cz2 = cos(t * 0.08 + 5.0) * 0.4;
+  // Secondary blob — drifts around slowly
+  vec2 c2Base = vec2(0.85 * aspect, 0.38);
+  vec2 c2 = c2Base + vec2(
+    sin(u_time * 0.04 + u_seed * 1.7) * 0.12 * aspect,
+    cos(u_time * 0.03 + u_seed * 2.3) * 0.1
+  );
+  float blob2 = morphBlob(st, c2, vec2(0.18, 0.20), tSlow + 5.0, u_seed + 10.0);
 
-  // Domain warping with cyclic movement
-  float warp1 = fbm(vec3(st * 0.4 + vec2(cx1, cy1), cz));
-  float warp2 = fbm(vec3(st * 0.4 + vec2(cx2, cy2), cz2));
-  vec2 warped = st + vec2(warp1, warp2) * 0.3;
+  float field = max(blob1, blob2 * 0.8);
 
-  float n1 = fbm(vec3(warped * 0.5 + vec2(sin(t * 0.17) * 0.5, cos(t * 0.13) * 0.5), sin(t * 0.09) * 0.3));
-  float n2 = fbm(vec3(warped * 0.35 + vec2(cos(t * 0.14 + 1.0) * 0.5, sin(t * 0.21 + 2.0) * 0.5), cos(t * 0.07) * 0.3 + 10.0));
+  // Color: multi-zone gradient from Figma palette
+  float tColor = u_time * 0.05 + u_seed * 3.0;
+  vec2 seedOff = vec2(u_seed * 5.0, u_seed * 3.7);
+  float n1 = snoise(vec3(st * 1.1 + seedOff, tColor)) * 0.5 + 0.5;
+  float n2 = snoise(vec3(st * 2.5 + seedOff * 0.7 + 5.0, tColor * 1.5 + 8.0));
+  float colorVal = clamp(n1 + n2 * 0.15, 0.0, 1.0);
 
-  float n = n1 * 0.6 + n2 * 0.4;
+  vec3 mintGreen = vec3(0.45, 0.82, 0.68);
+  vec3 lightCyan = vec3(0.52, 0.78, 0.92);
+  vec3 skyBlue   = vec3(0.40, 0.65, 0.90);
+  vec3 medBlue   = vec3(0.28, 0.50, 0.87);
+  vec3 deepBlue  = vec3(0.20, 0.38, 0.80);
 
-  float edgeFade = smoothstep(0.0, 0.03, uv.x) * smoothstep(0.0, 0.02, uv.y)
-                 * smoothstep(0.0, 0.03, 1.0 - uv.x) * smoothstep(0.0, 0.04, 1.0 - uv.y);
+  vec3 blobColor = mix(mintGreen, lightCyan, smoothstep(0.0, 0.25, colorVal));
+  blobColor = mix(blobColor, skyBlue, smoothstep(0.20, 0.45, colorVal));
+  blobColor = mix(blobColor, medBlue, smoothstep(0.40, 0.65, colorVal));
+  blobColor = mix(blobColor, deepBlue, smoothstep(0.65, 1.0, colorVal));
 
-  float intensity = smoothstep(-0.5, 0.15, n) * edgeFade;
-  intensity = pow(intensity, 0.45);
-
-  vec3 white = vec3(1.0);
-
-  float colorMix = smoothstep(-0.1, 0.35, n2 + warp1 * 0.3);
-  vec3 tinted = mix(u_color1, mix(u_color2, u_color3, colorMix), smoothstep(0.2, 0.7, intensity));
-  vec3 color = mix(white, tinted, clamp(intensity, 0.0, 1.0));
-
-  // Vertical stripes — each band has a gradient from bright edge to transparent center
+  // Stripe grid — distance from nearest separator line
   float cssX = gl_FragCoord.x / u_dpr;
-  float stripeWidth = 42.0;
-  float stripePos = fract(cssX / stripeWidth);
+  float stripePos = fract(cssX / 42.0);
+  float distFromLine = min(stripePos, 1.0 - stripePos);
+  float thinLine = 1.0 - smoothstep(0.0, 0.04, distFromLine);
 
-  float bandGrad = 1.0 - stripePos;
-  bandGrad = pow(bandGrad, 1.2);
+  // Near blob edge: color fades based on distance from separator line
+  float edgeProximity = 1.0 - smoothstep(0.12, 0.4, field);
+  float distFade = smoothstep(0.0, 0.5, distFromLine);
+  float fieldReduction = distFade * edgeProximity * 0.18;
+  float finalField = field - fieldReduction;
 
-  float colorDepth = 1.0 - dot(color, vec3(0.333));
-  float reactivity = 0.25 + colorDepth * 0.75;
+  float alpha = smoothstep(0.0, 0.65, finalField) * 0.88;
 
-  float stripeEffect = bandGrad * 0.18 * reactivity;
-  color = color + (vec3(1.0) - color) * stripeEffect;
+  vec3 bg = vec3(0.93);
+  vec3 color = mix(bg, blobColor, alpha);
+
+  // Thump brightness boost
+  color = mix(color, blobColor * 1.2, thump * alpha * 0.4);
+
+  // Separator lines: subtle white tint
+  float lineWhite = thinLine * smoothstep(0.05, 0.35, field) * 0.13;
+  color = mix(color, bg, lineWhite);
 
   gl_FragColor = vec4(color, 1.0);
 }
 `;
 
-interface FluidBackgroundProps {
-  variant?: FluidVariant;
-}
-
-export default function FluidBackground({ variant = "stablecoin" }: FluidBackgroundProps) {
+export default function PulseBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const colorsRef = useRef(COLOR_PRESETS[variant]);
-
-  useEffect(() => {
-    colorsRef.current = COLOR_PRESETS[variant];
-  }, [variant]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -238,49 +227,38 @@ export default function FluidBackground({ variant = "stablecoin" }: FluidBackgro
 
     const aPosition = gl.getAttribLocation(program, "a_position");
     const uTime = gl.getUniformLocation(program, "u_time");
+    const uSeed = gl.getUniformLocation(program, "u_seed");
     const uResolution = gl.getUniformLocation(program, "u_resolution");
     const uDpr = gl.getUniformLocation(program, "u_dpr");
-    const uColor1 = gl.getUniformLocation(program, "u_color1");
-    const uColor2 = gl.getUniformLocation(program, "u_color2");
-    const uColor3 = gl.getUniformLocation(program, "u_color3");
+    const seed = Math.random() * 100;
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio, 2);
-      const w = canvas!.clientWidth;
-      const h = canvas!.clientHeight;
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
+      canvas!.width = canvas!.clientWidth * dpr;
+      canvas!.height = canvas!.clientHeight * dpr;
     }
 
     resize();
     window.addEventListener("resize", resize);
-
     const startTime = performance.now();
 
     function render() {
       resize();
       gl!.viewport(0, 0, canvas!.width, canvas!.height);
       gl!.useProgram(program);
-
       gl!.enableVertexAttribArray(aPosition);
       gl!.bindBuffer(gl!.ARRAY_BUFFER, positionBuffer);
       gl!.vertexAttribPointer(aPosition, 2, gl!.FLOAT, false, 0, 0);
-
       const dpr = Math.min(window.devicePixelRatio, 2);
-      const colors = colorsRef.current;
       gl!.uniform1f(uTime, (performance.now() - startTime) / 1000);
+      gl!.uniform1f(uSeed, seed);
       gl!.uniform2f(uResolution, canvas!.width, canvas!.height);
       gl!.uniform1f(uDpr, dpr);
-      gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);
-      gl!.uniform3f(uColor2, colors.color2[0], colors.color2[1], colors.color2[2]);
-      gl!.uniform3f(uColor3, colors.color3[0], colors.color3[1], colors.color3[2]);
-
       gl!.drawArrays(gl!.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
     }
 
     rafRef.current = requestAnimationFrame(render);
-
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", resize);
