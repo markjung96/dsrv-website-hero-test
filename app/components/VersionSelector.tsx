@@ -9,6 +9,7 @@ const VERSIONS = [
   { path: "/blob-morph", label: "Blob Morph" },
   { path: "/bubble", label: "Bubble" },
   { path: "/pulse", label: "Pulse" },
+  { path: "/metaball", label: "Metaball" },
 ] as const;
 
 export default function VersionSelector() {
