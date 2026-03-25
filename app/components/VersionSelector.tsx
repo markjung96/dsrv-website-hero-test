@@ -10,6 +10,8 @@ const VERSIONS = [
   { path: "/bubble", label: "Bubble" },
   { path: "/pulse", label: "Pulse" },
   { path: "/metaball", label: "Metaball" },
+  { path: "/carousel", label: "Carousel" },
+  { path: "/contour", label: "Contour Blob" },
 ] as const;
 
 export default function VersionSelector() {

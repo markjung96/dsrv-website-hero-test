@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export type MetaballVariant =
+export type ContourVariant =
   | "stablecoin"
   | "portal"
   | "allThatNode"
@@ -13,41 +13,62 @@ export type MetaballVariant =
 type RGB = [number, number, number];
 
 interface ColorScheme {
-  color1: RGB;
-  color2: RGB;
-  color3: RGB;
+  inner: RGB;
+  mid1: RGB;
+  mid2: RGB;
+  mid3: RGB;
+  outer: RGB;
+  accent: RGB;
 }
 
-const COLOR_PRESETS: Record<MetaballVariant, ColorScheme> = {
+const COLOR_PRESETS: Record<ContourVariant, ColorScheme> = {
   portal: {
-    color1: [0.69, 0.66, 0.78],
-    color2: [0.31, 0.78, 0.63],
-    color3: [0.16, 0.38, 0.91],
+    inner: [0.25, 0.20, 0.70],
+    mid1: [0.40, 0.25, 0.80],
+    mid2: [0.20, 0.75, 0.80],
+    mid3: [0.30, 0.90, 0.50],
+    outer: [0.75, 0.92, 0.30],
+    accent: [0.90, 0.25, 0.60],
   },
   allThatNode: {
-    color1: [0.20, 0.40, 0.88],
-    color2: [0.30, 0.70, 0.90],
-    color3: [0.70, 0.85, 0.30],
+    inner: [0.22, 0.25, 0.75],
+    mid1: [0.50, 0.30, 0.85],
+    mid2: [0.15, 0.80, 0.78],
+    mid3: [0.20, 0.90, 0.45],
+    outer: [0.80, 0.95, 0.25],
+    accent: [0.95, 0.20, 0.55],
   },
   walletHub: {
-    color1: [0.44, 0.82, 0.78],
-    color2: [0.41, 0.69, 0.82],
-    color3: [0.50, 0.72, 0.85],
+    inner: [0.20, 0.30, 0.72],
+    mid1: [0.30, 0.45, 0.82],
+    mid2: [0.25, 0.70, 0.75],
+    mid3: [0.35, 0.82, 0.60],
+    outer: [0.60, 0.88, 0.40],
+    accent: [0.85, 0.30, 0.55],
   },
   stablecoin: {
-    color1: [0.56, 0.75, 0.88],
-    color2: [0.47, 0.69, 0.85],
-    color3: [0.50, 0.75, 0.82],
+    inner: [0.22, 0.28, 0.78],
+    mid1: [0.35, 0.40, 0.85],
+    mid2: [0.20, 0.65, 0.82],
+    mid3: [0.30, 0.80, 0.70],
+    outer: [0.55, 0.85, 0.50],
+    accent: [0.80, 0.35, 0.60],
   },
   stakingHub: {
-    color1: [0.28, 0.47, 0.85],
-    color2: [0.38, 0.72, 0.78],
-    color3: [0.55, 0.78, 0.44],
+    inner: [0.18, 0.22, 0.68],
+    mid1: [0.28, 0.35, 0.78],
+    mid2: [0.20, 0.60, 0.72],
+    mid3: [0.40, 0.78, 0.55],
+    outer: [0.70, 0.88, 0.35],
+    accent: [0.88, 0.28, 0.50],
   },
   custody: {
-    color1: [0.75, 0.50, 0.69],
-    color2: [0.40, 0.69, 0.72],
-    color3: [0.50, 0.58, 0.82],
+    inner: [0.30, 0.18, 0.65],
+    mid1: [0.50, 0.25, 0.75],
+    mid2: [0.35, 0.55, 0.78],
+    mid3: [0.25, 0.72, 0.68],
+    outer: [0.50, 0.82, 0.45],
+    accent: [0.82, 0.22, 0.65],
   },
 };
 
@@ -65,12 +86,14 @@ uniform float u_time;
 uniform float u_seed;
 uniform vec2 u_resolution;
 uniform float u_dpr;
-uniform vec3 u_color1;
-uniform vec3 u_color2;
-uniform vec3 u_color3;
 uniform vec2 u_mouse;
+uniform vec3 u_inner;
+uniform vec3 u_mid1;
+uniform vec3 u_mid2;
+uniform vec3 u_mid3;
+uniform vec3 u_outer;
+uniform vec3 u_accent;
 
-// Simplex noise
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
@@ -119,121 +142,109 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
-// Metaball field: returns influence at point p from a blob at center c with radius r
-float metaball(vec2 p, vec2 c, float r) {
-  float d = length(p - c);
-  return r * r / (d * d + 0.001);
-}
-
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
-  vec2 st = vec2(uv.x * aspect, uv.y);
+
+  // Responsive scale
+  float cssWidth = u_resolution.x / u_dpr;
+  float rScale = clamp(cssWidth / 1440.0, 0.5, 1.0);
+
+  // Center coordinate system
+  vec2 st = (uv - 0.5) * vec2(aspect, 1.0);
 
   // Mouse attract
-  vec2 mouseST = vec2(u_mouse.x * aspect, u_mouse.y);
+  vec2 mouseST = (u_mouse - 0.5) * vec2(aspect, 1.0);
   float mouseDist = length(st - mouseST);
   vec2 attractDir = mouseST - st;
-  float attractStr = exp(-mouseDist * mouseDist * 2.5) * 0.12;
+  float attractStr = exp(-mouseDist * mouseDist * 3.0) * 0.08;
   st += attractDir * attractStr;
 
   float t = u_time;
-  float halfAspect = aspect * 0.5;
 
-  // Responsive scale: blobs shrink on narrow viewports
-  float cssWidth = u_resolution.x / u_dpr;
-  float rScale = clamp(cssWidth / 1440.0, 0.45, 1.0);
-
-  // Organic shape distortion via noise
-  float noiseScale = 1.2;
-  float noiseTime = t * 0.25 + u_seed;
-
-  // Main blob — stays near center, minimum radius 0.35
-  vec2 c1 = vec2(
-    halfAspect + sin(t * 0.08 + u_seed) * 0.08 * aspect,
-    0.5 + cos(t * 0.07 + u_seed * 1.3) * 0.06
+  // Blob center offset (gentle drift)
+  vec2 blobCenter = vec2(
+    sin(t * 0.06 + u_seed) * 0.05,
+    cos(t * 0.05 + u_seed * 1.3) * 0.04
   );
-  float r1 = (0.38 + 0.06 * sin(t * 0.15 + u_seed)) * rScale;
+  vec2 p = st - blobCenter;
 
-  // Sub blob 1 — orbits more freely
-  vec2 c2 = vec2(
-    halfAspect + sin(t * 0.15 + u_seed * 2.1) * 0.40 * aspect,
-    0.5 + cos(t * 0.12 + u_seed * 1.7) * 0.35
-  );
-  float r2 = (0.22 + 0.07 * sin(t * 0.18 + u_seed * 3.0)) * rScale;
+  // Distance from blob center
+  float dist = length(p);
 
-  // Sub blob 2 — different orbit
-  vec2 c3 = vec2(
-    halfAspect + cos(t * 0.12 + u_seed * 3.5) * 0.35 * aspect,
-    0.5 + sin(t * 0.14 + u_seed * 2.8) * 0.32
-  );
-  float r3 = (0.19 + 0.06 * cos(t * 0.16 + u_seed * 4.0)) * rScale;
+  // Organic distortion via noise — makes the blob shape irregular
+  float angle = atan(p.y, p.x);
+  float noiseTime = t * 0.12 + u_seed;
 
-  // Organic shape distortion — warp the sampling point per-blob
-  vec2 warp1 = vec2(
-    snoise(vec3(st * noiseScale, noiseTime)),
-    snoise(vec3(st * noiseScale + 5.0, noiseTime + 3.0))
-  ) * 0.25;
-  vec2 warp2 = vec2(
-    snoise(vec3(st * noiseScale * 1.3 + 10.0, noiseTime * 1.2)),
-    snoise(vec3(st * noiseScale * 1.3 + 15.0, noiseTime * 1.2 + 3.0))
-  ) * 0.20;
+  // Very low-frequency for smooth, rounded shape
+  float distort = 0.0;
+  distort += snoise(vec3(cos(angle) * 0.3, sin(angle) * 0.3, noiseTime)) * 0.08;
+  distort += snoise(vec3(cos(angle * 2.0) * 0.2 + 3.0, sin(angle * 2.0) * 0.2, noiseTime * 0.7 + 5.0)) * 0.03;
 
-  // Metaball field with warped positions
-  float field = 0.0;
-  field += metaball(st + warp1, c1, r1);
-  field += metaball(st + warp1 * 0.8 + warp2 * 0.2, c2, r2);
-  field += metaball(st + warp2, c3, r3);
+  // Minimal spatial noise
+  float spatialNoise = snoise(vec3(p * 0.6, noiseTime * 0.5)) * 0.015;
 
-  // Threshold for blob boundary
-  float threshold = 1.0;
-  float blobMask = smoothstep(threshold * 0.6, threshold * 1.4, field);
+  // Effective distance with distortion, scaled by viewport
+  float blobRadius = 0.45 * rScale;
+  float d = (dist + spatialNoise) / (blobRadius + distort * rScale);
 
-  // Color gradient based on position within the field
-  float colorMix = snoise(vec3(st * 0.7 + vec2(u_seed * 2.0), t * 0.04)) * 0.5 + 0.5;
-  vec3 blobColor = mix(u_color1, u_color2, smoothstep(0.0, 0.5, colorMix));
-  blobColor = mix(blobColor, u_color3, smoothstep(0.4, 1.0, colorMix));
+  // Continuous smooth gradient — no banding
+  float bandNorm = clamp(d, 0.0, 1.0);
 
-  // Add subtle variation based on which blob is dominant
-  float b1 = metaball(st + warp1, c1, r1);
-  float b2 = metaball(st + warp1 * 0.8 + warp2 * 0.2, c2, r2);
-  float b3 = metaball(st + warp2, c3, r3);
-  float total = b1 + b2 + b3 + 0.001;
-  vec3 weightedColor = (u_color1 * b1 + u_color2 * b2 + u_color3 * b3) / total;
-  blobColor = mix(blobColor, weightedColor, 0.4);
-
-  // Edge fade to white (vignette)
-  vec2 center = vec2(0.5, 0.5);
-  float vignetteDist = length(uv - center);
-  float vignette = smoothstep(0.25, 0.75, vignetteDist);
+  // Color mapping: smooth spectrum from inner to outer
+  vec3 color;
+  if (bandNorm < 0.2) {
+    color = mix(u_inner, u_mid1, bandNorm / 0.2);
+  } else if (bandNorm < 0.4) {
+    vec3 accentMix = mix(u_mid1, u_accent, smoothstep(0.2, 0.28, bandNorm));
+    accentMix = mix(accentMix, u_mid2, smoothstep(0.28, 0.4, bandNorm));
+    color = accentMix;
+  } else if (bandNorm < 0.65) {
+    color = mix(u_mid2, u_mid3, (bandNorm - 0.4) / 0.25);
+  } else if (bandNorm < 0.9) {
+    color = mix(u_mid3, u_outer, (bandNorm - 0.65) / 0.25);
+  } else {
+    color = u_outer;
+  }
 
   // Vertical stripes
   float cssX = gl_FragCoord.x / u_dpr;
   float stripePos = fract(cssX / 42.0);
   float bandGrad = pow(1.0 - stripePos, 1.2);
-  float colorDepth = 1.0 - dot(blobColor, vec3(0.333));
+  float colorDepth = 1.0 - dot(color, vec3(0.333));
   float reactivity = 0.25 + colorDepth * 0.75;
-  float stripeEffect = bandGrad * 0.15 * reactivity * blobMask;
-
-  // Compose: blob on white background with edge fade
-  vec3 bg = vec3(1.0);
-  vec3 color = mix(bg, blobColor, blobMask * (1.0 - vignette * 0.8));
+  float stripeEffect = bandGrad * 0.18 * reactivity;
   color = color + (vec3(1.0) - color) * stripeEffect;
+
+  // Fade to white at outer edge
+  float edgeFade = smoothstep(0.75, 1.1, d);
+  color = mix(color, vec3(1.0), edgeFade);
+
+  // Background white outside the blob
+  float outerMask = smoothstep(1.0, 1.15, d);
+  color = mix(color, vec3(1.0), outerMask);
+
+  // Soft glow around the blob edge
+  float glowDist = smoothstep(1.15, 0.85, d) * smoothstep(0.6, 0.85, d);
+  vec3 glowColor = mix(u_outer, u_mid3, 0.5);
+  color = mix(color, glowColor, glowDist * 0.15);
 
   // Mouse glow
   float mDist = length(uv - u_mouse);
-  float mouseGlow = exp(-mDist * mDist * 4.0) * 0.30;
-  color = mix(color, blobColor * 1.2, mouseGlow * blobMask);
+  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.20;
+  vec3 mouseColor = mix(u_mid2, u_mid3, 0.5);
+  float insideBlob = 1.0 - outerMask;
+  color = mix(color, mouseColor * 1.3, mouseGlow * insideBlob);
 
   gl_FragColor = vec4(color, 1.0);
 }
 `;
 
-interface MetaballBackgroundProps {
-  variant?: MetaballVariant;
+interface ContourBlobBackgroundProps {
+  variant?: ContourVariant;
 }
 
-export default function MetaballBackground({ variant = "stablecoin" }: MetaballBackgroundProps) {
+export default function ContourBlobBackground({ variant = "allThatNode" }: ContourBlobBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const mouseRef = useRef<[number, number]>([0.5, 0.5]);
@@ -287,10 +298,13 @@ export default function MetaballBackground({ variant = "stablecoin" }: MetaballB
     const uSeed = gl.getUniformLocation(program, "u_seed");
     const uResolution = gl.getUniformLocation(program, "u_resolution");
     const uDpr = gl.getUniformLocation(program, "u_dpr");
-    const uColor1 = gl.getUniformLocation(program, "u_color1");
-    const uColor2 = gl.getUniformLocation(program, "u_color2");
-    const uColor3 = gl.getUniformLocation(program, "u_color3");
     const uMouse = gl.getUniformLocation(program, "u_mouse");
+    const uInner = gl.getUniformLocation(program, "u_inner");
+    const uMid1 = gl.getUniformLocation(program, "u_mid1");
+    const uMid2 = gl.getUniformLocation(program, "u_mid2");
+    const uMid3 = gl.getUniformLocation(program, "u_mid3");
+    const uOuter = gl.getUniformLocation(program, "u_outer");
+    const uAccent = gl.getUniformLocation(program, "u_accent");
 
     const seed = Math.random() * 100;
 
@@ -331,10 +345,13 @@ export default function MetaballBackground({ variant = "stablecoin" }: MetaballB
       gl!.uniform1f(uSeed, seed);
       gl!.uniform2f(uResolution, canvas!.width, canvas!.height);
       gl!.uniform1f(uDpr, dpr);
-      gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);
-      gl!.uniform3f(uColor2, colors.color2[0], colors.color2[1], colors.color2[2]);
-      gl!.uniform3f(uColor3, colors.color3[0], colors.color3[1], colors.color3[2]);
       gl!.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
+      gl!.uniform3f(uInner, colors.inner[0], colors.inner[1], colors.inner[2]);
+      gl!.uniform3f(uMid1, colors.mid1[0], colors.mid1[1], colors.mid1[2]);
+      gl!.uniform3f(uMid2, colors.mid2[0], colors.mid2[1], colors.mid2[2]);
+      gl!.uniform3f(uMid3, colors.mid3[0], colors.mid3[1], colors.mid3[2]);
+      gl!.uniform3f(uOuter, colors.outer[0], colors.outer[1], colors.outer[2]);
+      gl!.uniform3f(uAccent, colors.accent[0], colors.accent[1], colors.accent[2]);
 
       gl!.drawArrays(gl!.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
