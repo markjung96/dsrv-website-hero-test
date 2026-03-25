@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import ContourBlobBackground from "../components/ContourBlobBackground";
 import Carousel3D from "../components/Carousel3D";
 import VersionSelector from "../components/VersionSelector";
@@ -29,8 +28,6 @@ const heroes = [
 ];
 
 export default function CarouselPage() {
-  const [activeIdx, setActiveIdx] = useState(2);
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-white">
       <ContourBlobBackground variant="allThatNode" />
@@ -38,11 +35,7 @@ export default function CarouselPage() {
       <VersionSelector />
 
       <div className="relative z-10 flex items-center justify-center h-screen px-4">
-        <Carousel3D
-          items={heroes}
-          activeIndex={activeIdx}
-          onSelect={setActiveIdx}
-        />
+        <Carousel3D items={heroes} />
       </div>
     </main>
   );

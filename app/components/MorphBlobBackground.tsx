@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export type MetaballVariant =
+export type MorphVariant =
   | "stablecoin"
   | "portal"
   | "allThatNode"
@@ -18,10 +18,10 @@ interface ColorScheme {
   color3: RGB;
 }
 
-const COLOR_PRESETS: Record<MetaballVariant, ColorScheme> = {
+const COLOR_PRESETS: Record<MorphVariant, ColorScheme> = {
   portal: {
     color1: [0.0, 0.33, 1.0],
-    color2: [0.92, 0.72, 0.97],
+    color2: [0.50, 0.20, 0.85],
     color3: [0.70, 0.40, 0.92],
   },
   allThatNode: {
@@ -35,9 +35,9 @@ const COLOR_PRESETS: Record<MetaballVariant, ColorScheme> = {
     color3: [0.50, 0.72, 0.85],
   },
   stablecoin: {
-    color1: [0.23, 0.37, 0.96],
-    color2: [0.28, 0.42, 0.90],
-    color3: [0.18, 0.32, 0.98],
+    color1: [0.56, 0.75, 0.88],
+    color2: [0.47, 0.69, 0.85],
+    color3: [0.50, 0.75, 0.82],
   },
   stakingHub: {
     color1: [0.28, 0.47, 0.85],
@@ -70,7 +70,6 @@ uniform vec3 u_color2;
 uniform vec3 u_color3;
 uniform vec2 u_mouse;
 
-// Simplex noise
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
@@ -119,7 +118,6 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
-// Metaball field: returns influence at point p from a blob at center c with radius r
 float metaball(vec2 p, vec2 c, float r) {
   float d = length(p - c);
   return r * r / (d * d + 0.001);
@@ -140,66 +138,45 @@ void main() {
   float t = u_time;
   float halfAspect = aspect * 0.5;
 
-  // Responsive scale: blobs shrink on narrow viewports
+  // Responsive scale
   float cssWidth = u_resolution.x / u_dpr;
   float rScale = clamp(cssWidth / 1440.0, 0.45, 1.0);
 
   // Organic shape distortion via noise
-  float noiseScale = 1.2;
-  float noiseTime = t * 0.25 + u_seed;
+  float noiseScale = 1.4;
+  float noiseTime = t * 0.45 + u_seed;
 
-  // Main blob — stays near center, large
+  // Single large blob — center with more movement
   vec2 c1 = vec2(
-    halfAspect + sin(t * 0.08 + u_seed) * 0.08 * aspect,
-    0.5 + cos(t * 0.07 + u_seed * 1.3) * 0.06
+    halfAspect + sin(t * 0.12 + u_seed) * 0.10 * aspect,
+    0.5 + cos(t * 0.10 + u_seed * 1.3) * 0.08
   );
-  float r1 = (0.47 + 0.05 * sin(t * 0.15 + u_seed)) * rScale;
+  float r1 = (0.50 + 0.08 * sin(t * 0.20 + u_seed)) * rScale;
 
-  // Sub blob 1 — orbits more freely
-  vec2 c2 = vec2(
-    halfAspect + sin(t * 0.15 + u_seed * 2.1) * 0.40 * aspect,
-    0.5 + cos(t * 0.12 + u_seed * 1.7) * 0.35
-  );
-  float r2 = (0.28 + 0.07 * sin(t * 0.18 + u_seed * 3.0)) * rScale;
-
-  // Sub blob 2 — different orbit
-  vec2 c3 = vec2(
-    halfAspect + cos(t * 0.12 + u_seed * 3.5) * 0.35 * aspect,
-    0.5 + sin(t * 0.14 + u_seed * 2.8) * 0.32
-  );
-  float r3 = (0.25 + 0.06 * cos(t * 0.16 + u_seed * 4.0)) * rScale;
-
-  // Organic shape distortion — warp the sampling point per-blob
+  // Warp for organic shape — stronger morphing
   vec2 warp1 = vec2(
     snoise(vec3(st * noiseScale, noiseTime)),
     snoise(vec3(st * noiseScale + 5.0, noiseTime + 3.0))
   ) * 0.25;
-  vec2 warp2 = vec2(
-    snoise(vec3(st * noiseScale * 1.3 + 10.0, noiseTime * 1.2)),
-    snoise(vec3(st * noiseScale * 1.3 + 15.0, noiseTime * 1.2 + 3.0))
-  ) * 0.20;
 
-  // Metaball field with warped positions
-  float field = 0.0;
-  field += metaball(st + warp1, c1, r1);
-  field += metaball(st + warp1 * 0.8 + warp2 * 0.2, c2, r2);
-  field += metaball(st + warp2, c3, r3);
+  // Single metaball field
+  float field = metaball(st + warp1, c1, r1);
 
-  // Threshold: softer edge, saturated center
+  // Threshold: u_color2.g controls soft(1) vs vivid(0) edge
+  float softMode = u_color2.g;
   float threshold = 1.0;
-  float rawMask = smoothstep(threshold * 0.2, threshold * 2.0, field);
-  float blobMask = pow(rawMask, 0.45);
+  float lo = mix(0.3, 0.05, softMode);
+  float hi = mix(1.6, 3.5, softMode);
+  float pw = mix(0.45, 0.3, softMode);
+  float rawMask = smoothstep(threshold * lo, threshold * hi, field);
+  float blobMask = pow(rawMask, pw);
 
-  // Color: sharpen weights so each blob holds its color, fast transition at boundary
-  float b1 = metaball(st + warp1, c1, r1);
-  float b2 = metaball(st + warp1 * 0.8 + warp2 * 0.2, c2, r2);
-  float b3 = metaball(st + warp2, c3, r3);
-  float w1 = pow(b1, 3.0);
-  float w2 = pow(b2, 1.2);
-  float w3 = pow(b3, 1.2);
-  float total = w1 + w2 + w3 + 0.001;
-  vec3 blobColor = (u_color1 * w1 + u_color2 * w2 + u_color3 * w3) / total;
-
+  // Color: diagonal gradient, 2-color (u_color2.r controls rotation: 0=fixed, 1=rotating)
+  float rotateMode = u_color2.r;
+  float gradAngle = mix(0.785, t * 0.12, rotateMode);
+  vec2 gradDir = vec2(cos(gradAngle), sin(gradAngle));
+  float diag = dot(uv - 0.5, gradDir) + 0.5;
+  vec3 blobColor = mix(u_color1, u_color3, smoothstep(0.2, 0.8, diag));
 
   // Edge fade to white (vignette)
   vec2 center = vec2(0.5, 0.5);
@@ -219,11 +196,13 @@ void main() {
 }
 `;
 
-interface MetaballBackgroundProps {
-  variant?: MetaballVariant;
+interface MorphBlobBackgroundProps {
+  variant?: MorphVariant;
+  rotateGradient?: boolean;
+  softEdge?: boolean;
 }
 
-export default function MetaballBackground({ variant = "stablecoin" }: MetaballBackgroundProps) {
+export default function MorphBlobBackground({ variant = "portal", rotateGradient = false, softEdge = true }: MorphBlobBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const mouseRef = useRef<[number, number]>([0.5, 0.5]);
@@ -322,7 +301,7 @@ export default function MetaballBackground({ variant = "stablecoin" }: MetaballB
       gl!.uniform2f(uResolution, canvas!.width, canvas!.height);
       gl!.uniform1f(uDpr, dpr);
       gl!.uniform3f(uColor1, colors.color1[0], colors.color1[1], colors.color1[2]);
-      gl!.uniform3f(uColor2, colors.color2[0], colors.color2[1], colors.color2[2]);
+      gl!.uniform3f(uColor2, rotateGradient ? 1.0 : 0.0, softEdge ? 1.0 : 0.0, 0.0);
       gl!.uniform3f(uColor3, colors.color3[0], colors.color3[1], colors.color3[2]);
       gl!.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
 
