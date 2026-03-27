@@ -47,6 +47,13 @@ const VERSION_GROUPS: VersionGroup[] = [
       { path: "/morph-vivid-rotate", label: "Morph Vivid Rotate", desc: "진한 경계 + 회전 그라데이션" },
     ],
   },
+  {
+    group: "소프트 블롭",
+    items: [
+      { path: "/soft-blob", label: "Soft Blob", desc: "가우시안 페이드, 깨끗한 그라데이션" },
+      { path: "/soft-blob-rotate", label: "Soft Blob Rotate", desc: "가우시안 페이드 + 회전 그라데이션" },
+    ],
+  },
 ];
 
 const ALL_VERSIONS = VERSION_GROUPS.flatMap((g) => g.items);
