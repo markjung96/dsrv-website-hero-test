@@ -87,7 +87,8 @@ function lerpRGB(a: RGB, b: RGB, t: number): RGB {
 
 function getColors(stops: ColorStop[], pos: number): { tr: RGB; bl: RGB } {
   if (pos <= stops[0].pos) return { tr: stops[0].tr, bl: stops[0].bl };
-  if (pos >= stops[stops.length - 1].pos) return { tr: stops[stops.length - 1].tr, bl: stops[stops.length - 1].bl };
+  if (pos >= stops[stops.length - 1].pos)
+    return { tr: stops[stops.length - 1].tr, bl: stops[stops.length - 1].bl };
   for (let i = 0; i < stops.length - 1; i++) {
     if (pos >= stops[i].pos && pos <= stops[i + 1].pos) {
       const t = (pos - stops[i].pos) / (stops[i + 1].pos - stops[i].pos);
@@ -100,10 +101,8 @@ function getColors(stops: ColorStop[], pos: number): { tr: RGB; bl: RGB } {
   return { tr: stops[0].tr, bl: stops[0].bl };
 }
 
-/* ── Blob geometry ────────────────────────────────────────── */
-
 const NUM_LAYERS = 150;
-const OUTER_COUNT = 40;
+const OUTER_COUNT = 35;
 const BLOB_PTS = 48;
 
 function getBlobPoints(
@@ -117,9 +116,8 @@ function getBlobPoints(
 ): [number, number][] {
   const points: [number, number][] = [];
 
-  const outerFactor = Math.max(0, 1.0 - progress * 4.0);
-  const baseDeform = 0.035 * outerFactor;
-  const layerNoise = Math.sin(seed * 3.1 + layerIdx * 0.07) * 0.008 * outerFactor;
+  const baseDeform = 0.10 + progress * 0.12;
+  const layerNoise = Math.sin(seed * 3.1 + layerIdx * 0.07) * 0.025;
   const deform = baseDeform + layerNoise;
 
   const rot = seed * 0.25 + layerIdx * 0.008;
@@ -175,18 +173,16 @@ function drawBlobPath(ctx: CanvasRenderingContext2D, pts: [number, number][]) {
   ctx.closePath();
 }
 
-/* ── Component ────────────────────────────────────────────── */
-
-interface ContourBlobBackgroundProps {
+interface ContourBlobBackgroundV2Props {
   variant?: ContourVariant;
 }
 
-export default function ContourBlobBackground({ variant = "allThatNode" }: ContourBlobBackgroundProps) {
+export default function ContourBlobBackgroundV2({
+  variant = "allThatNode",
+}: ContourBlobBackgroundV2Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
-  const mouseRef = useRef<[number, number]>([0.5, 0.5]);
   const seedRef = useRef(Math.random() * 100);
-
   const innerCacheRef = useRef<HTMLCanvasElement | null>(null);
   const lastSizeRef = useRef({ w: 0, h: 0 });
   const lastVariantRef = useRef(variant);
@@ -199,7 +195,6 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
     animSx: number,
     animSy: number,
     extraBlur: number = 0,
-    sizeScale: number = 1.0,
   ) => {
     const seed = seedRef.current;
     const stops = COLOR_STOPS[variant];
@@ -212,15 +207,15 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
         : t < 0.65
           ? 0.2805 + (t - 0.33) * 1.35
           : 0.712 + (t - 0.65) * 0.82;
-    const maxR = Math.min(w, h) * 0.285 * sizeScale;
+    const maxR = Math.min(w, h) * 0.48;
     const radius = maxR * (1.0 - easedT * 0.64);
 
     const driftAngle = seed * 0.4 + 0.3;
-    const driftMag = progress * Math.min(w, h) * 0.02;
+    const driftMag = progress * Math.min(w, h) * 0.05;
     const cx = w / 2 + Math.cos(driftAngle) * driftMag;
     const cy = h / 2 + Math.sin(driftAngle) * driftMag;
 
-    const aspect = 1.15;
+    const aspect = 1.2 + progress * 0.12;
     const rx = radius * animSx;
     const ry = radius * aspect * animSy;
 
@@ -238,9 +233,8 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
     grad.addColorStop(0, `rgba(${tr[0]},${tr[1]},${tr[2]},${fadeIn})`);
     grad.addColorStop(1, `rgba(${bl[0]},${bl[1]},${bl[2]},${fadeIn})`);
 
-    // Wider blur: outer 55% of layers get progressive blur + edge fade
     const edgeBlur =
-      progress < 0.55 ? (1.0 - progress / 0.55) ** 1.2 * 50 : 0;
+      progress < 0.3 ? (1.0 - progress / 0.3) ** 1.5 * 30 : 0;
     const totalBlur = Math.max(edgeBlur, extraBlur);
     if (totalBlur > 1.5) ctx.filter = `blur(${totalBlur}px)`;
 
@@ -251,84 +245,89 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
     if (totalBlur > 1.5) ctx.filter = "none";
   };
 
-  const renderInnerCache = useCallback((w: number, h: number, dpr: number) => {
-    if (!innerCacheRef.current) {
-      innerCacheRef.current = document.createElement("canvas");
-    }
-    const off = innerCacheRef.current;
-    off.width = w * dpr;
-    off.height = h * dpr;
-    const ctx = off.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+  const renderInnerCache = useCallback(
+    (w: number, h: number, dpr: number) => {
+      if (!innerCacheRef.current) {
+        innerCacheRef.current = document.createElement("canvas");
+      }
+      const off = innerCacheRef.current;
+      off.width = w * dpr;
+      off.height = h * dpr;
+      const ctx = off.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
 
-    for (let i = OUTER_COUNT; i < NUM_LAYERS; i++) {
-      drawLayer(ctx, i, w, h, 1.0, 1.0, 0, 0.8);
-    }
+      for (let i = OUTER_COUNT; i < NUM_LAYERS; i++) {
+        drawLayer(ctx, i, w, h, 1.0, 1.0);
+      }
 
-    lastSizeRef.current = { w, h };
-    lastVariantRef.current = variant;
-  }, [variant]);
+      lastSizeRef.current = { w, h };
+      lastVariantRef.current = variant;
+    },
+    [variant],
+  );
 
-  const draw = useCallback((time: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = Math.min(window.devicePixelRatio, 2);
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-    }
-
-    if (lastSizeRef.current.w !== w || lastSizeRef.current.h !== h || lastVariantRef.current !== variant) {
-      renderInnerCache(w, h, dpr);
-    }
-
-    const t = time / 1000;
-    const seed = seedRef.current;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, w, h);
-
-    const outerSx = 0.95 + 0.05 * Math.sin(t * 0.08 + seed * 0.5);
-    const outerSy = 1.05 + 0.05 * Math.cos(t * 0.08 + seed * 0.5);
-    const scaleStretch = Math.max(outerSx, outerSy) - 1.0;
-    const stretchBlur = Math.max(0, scaleStretch) * 60;
-
-    for (let i = 0; i < OUTER_COUNT; i++) {
-      const layerT = 1.0 - i / OUTER_COUNT;
-      const extra = stretchBlur * layerT;
-      drawLayer(ctx, i, w, h, outerSx, outerSy, extra, 1.2);
-    }
-
-    if (innerCacheRef.current) {
-      ctx.drawImage(innerCacheRef.current, 0, 0, w, h);
-    }
-
-    rafRef.current = requestAnimationFrame(draw);
-  }, [variant, renderInnerCache]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+  const draw = useCallback(
+    (time: number) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      mouseRef.current = [
-        (e.clientX - rect.left) / rect.width,
-        (e.clientY - rect.top) / rect.height,
-      ];
-    };
-    window.addEventListener("mousemove", handleMouseMove);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      if (
+        lastSizeRef.current.w !== w ||
+        lastSizeRef.current.h !== h ||
+        lastVariantRef.current !== variant
+      ) {
+        renderInnerCache(w, h, dpr);
+      }
+
+      const t = time / 1000;
+      const seed = seedRef.current;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, w, h);
+
+      const outerSx = 0.88 + 0.12 * Math.sin(t * 0.08 + seed * 0.5);
+      const outerSy = 1.12 + 0.12 * Math.cos(t * 0.08 + seed * 0.5);
+      const scaleStretch = Math.max(outerSx, outerSy) - 1.0;
+      const stretchBlur = Math.max(0, scaleStretch) * 60;
+
+      for (let i = 0; i < OUTER_COUNT; i++) {
+        const layerT = 1.0 - i / OUTER_COUNT;
+        const extra = stretchBlur * layerT;
+        drawLayer(ctx, i, w, h, outerSx, outerSy, extra);
+      }
+
+      if (innerCacheRef.current) {
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(outerSx, outerSy);
+        ctx.translate(-cx, -cy);
+        ctx.drawImage(innerCacheRef.current, 0, 0, w, h);
+        ctx.restore();
+      }
+
+      rafRef.current = requestAnimationFrame(draw);
+    },
+    [variant, renderInnerCache],
+  );
+
+  useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("mousemove", handleMouseMove);
-    };
+    return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);
 
   return (

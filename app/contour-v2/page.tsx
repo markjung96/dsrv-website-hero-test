@@ -1,33 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import ContourBlobBackground, { type ContourVariant } from "../components/ContourBlobBackground";
+import ContourBlobBackgroundV2, { type ContourVariant } from "../components/ContourBlobBackgroundV2";
 import VersionSelector from "../components/VersionSelector";
 
 const heroes: { variant: ContourVariant; title: string; subtitle: string }[] = [
   { variant: "portal", title: "DSRV Portal", subtitle: "한 번의 연동으로 누리는 쉽고 강력한 블록체인 인프라" },
-  {
-    variant: "allThatNode",
-    title: "All That Node",
-    subtitle: "복잡한 멀티체인 인프라를 하나로 잇는 가장 견고한 게이트웨이",
-  },
+  { variant: "allThatNode", title: "All That Node", subtitle: "복잡한 멀티체인 인프라를 하나로 잇는 가장 견고한 게이트웨이" },
   { variant: "walletHub", title: "Wallet Hub", subtitle: "보안과 사용성을 동시에 확보하는 MPC 지갑 인터페이스" },
   { variant: "stablecoin", title: "Stablecoin Manager", subtitle: "온체인 결제를 단일표준화하는 오케스트레이션 엔진" },
-  {
-    variant: "stakingHub",
-    title: "Staking Hub",
-    subtitle: "기업 자산의 안전한 운용과 투명한 증빙을 위한 스테이킹 솔루션",
-  },
+  { variant: "stakingHub", title: "Staking Hub", subtitle: "기업 자산의 안전한 운용과 투명한 증빙을 위한 스테이킹 솔루션" },
   { variant: "custody", title: "Custody", subtitle: "모든 위협으로부터 자산을 격리하는 엔터프라이즈 수탁의 기준" },
 ];
 
-export default function ContourPage() {
+export default function ContourV2Page() {
   const [activeIdx, setActiveIdx] = useState(0);
-  const { variant, title, subtitle } = heroes[activeIdx];
+  const { variant } = heroes[activeIdx];
 
   return (
     <main className="relative h-screen overflow-hidden bg-white">
-      <ContourBlobBackground key={variant} variant={variant} />
+      <ContourBlobBackgroundV2 key={variant} variant={variant} />
 
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
