@@ -24,6 +24,7 @@ const VERSION_GROUPS: VersionGroup[] = [
       { path: "/bubble", label: "Bubble", desc: "WebGL 버블 셰이더" },
       { path: "/pulse", label: "Pulse", desc: "WebGL 펄스 셰이더" },
       { path: "/carousel", label: "Carousel", desc: "3D 캐러셀 카드" },
+      { path: "/ocean-swell", label: "Ocean Swell", desc: "독립 너울 레이어 + caustic" },
     ],
   },
   {
@@ -52,6 +53,14 @@ const VERSION_GROUPS: VersionGroup[] = [
     items: [
       { path: "/soft-blob", label: "Soft Blob", desc: "가우시안 페이드, 깨끗한 그라데이션" },
       { path: "/soft-blob-rotate", label: "Soft Blob Rotate", desc: "가우시안 페이드 + 회전 그라데이션" },
+    ],
+  },
+  {
+    group: "파도 산",
+    items: [
+      { path: "/wave-mountain-a", label: "Wave Mountain (정적)", desc: "피그마 SVG 블롭 레이어" },
+      { path: "/wave-mountain-f", label: "Wave Mountain Flame (소)", desc: "프로시저럴 불꽃 — 세밀한 일렁임" },
+      { path: "/wave-mountain-f2", label: "Wave Mountain Flame (대)", desc: "프로시저럴 불꽃 — 넓은 일렁임" },
     ],
   },
 ];

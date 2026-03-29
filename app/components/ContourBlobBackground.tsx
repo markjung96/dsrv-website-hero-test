@@ -227,7 +227,9 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
     const pts = getBlobPoints(cx, cy, rx, ry, seed, i, progress);
 
     const { tr, bl } = getColors(stops, progress);
-    const fadeIn = progress < 0.25 ? (progress / 0.25) ** 2 : 1.0;
+    const fadeIn = progress < 0.20 ? (progress / 0.20) ** 2 : 1.0;
+    const centerFade = progress > 0.6 ? 1.0 - (progress - 0.6) / 0.4 * 0.45 : 1.0;
+    const alpha = fadeIn * centerFade;
 
     const grad = ctx.createLinearGradient(
       cx + rx * 0.7,
@@ -235,12 +237,12 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
       cx - rx * 0.7,
       cy + ry * 0.7,
     );
-    grad.addColorStop(0, `rgba(${tr[0]},${tr[1]},${tr[2]},${fadeIn})`);
-    grad.addColorStop(1, `rgba(${bl[0]},${bl[1]},${bl[2]},${fadeIn})`);
+    grad.addColorStop(0, `rgba(${tr[0]},${tr[1]},${tr[2]},${alpha})`);
+    grad.addColorStop(1, `rgba(${bl[0]},${bl[1]},${bl[2]},${alpha})`);
 
-    // Wider blur: outer 55% of layers get progressive blur + edge fade
+    // Heavy blur on outer layers to eliminate visible edges
     const edgeBlur =
-      progress < 0.55 ? (1.0 - progress / 0.55) ** 1.2 * 50 : 0;
+      progress < 0.70 ? (1.0 - progress / 0.70) ** 1.0 * 80 : 0;
     const totalBlur = Math.max(edgeBlur, extraBlur);
     if (totalBlur > 1.5) ctx.filter = `blur(${totalBlur}px)`;
 
@@ -263,7 +265,7 @@ export default function ContourBlobBackground({ variant = "allThatNode" }: Conto
     ctx.clearRect(0, 0, w, h);
 
     for (let i = OUTER_COUNT; i < NUM_LAYERS; i++) {
-      drawLayer(ctx, i, w, h, 1.0, 1.0, 0, 0.8);
+      drawLayer(ctx, i, w, h, 1.0, 1.0, 0, 1.3);
     }
 
     lastSizeRef.current = { w, h };

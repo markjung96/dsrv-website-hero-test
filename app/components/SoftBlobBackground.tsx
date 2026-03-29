@@ -111,64 +111,54 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
+float metaball(vec2 p, vec2 c, float r) {
+  float d = length(p - c);
+  return r * r / (d * d + 0.001);
+}
+
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
-  vec2 st = (uv - 0.5) * vec2(aspect, 1.0);
+  vec2 st = vec2(uv.x * aspect, uv.y);
 
   // Mouse attract
-  vec2 mouseST = (u_mouse - 0.5) * vec2(aspect, 1.0);
+  vec2 mouseST = vec2(u_mouse.x * aspect, u_mouse.y);
   float mouseDist = length(st - mouseST);
   vec2 attractDir = mouseST - st;
-  float attractStr = exp(-mouseDist * mouseDist * 3.0) * 0.06;
+  float attractStr = exp(-mouseDist * mouseDist * 2.5) * 0.12;
   st += attractDir * attractStr;
 
   float t = u_time;
+  float halfAspect = aspect * 0.5;
 
   // Responsive scale
   float cssWidth = u_resolution.x / u_dpr;
-  float rScale = clamp(cssWidth / 1440.0, 0.5, 1.0);
+  float rScale = clamp(cssWidth / 1440.0, 0.45, 1.0);
 
-  // Blob center with gentle drift
-  vec2 blobCenter = vec2(
-    sin(t * 0.06 + u_seed) * 0.15,
-    cos(t * 0.05 + u_seed * 1.3) * 0.12
+  // Organic shape distortion via noise
+  float noiseScale = 1.4;
+  float noiseTime = t * 0.35 + u_seed;
+
+  // Single large blob — center with movement
+  vec2 c1 = vec2(
+    halfAspect + sin(t * 0.09 + u_seed) * 0.10 * aspect,
+    0.5 + cos(t * 0.07 + u_seed * 1.3) * 0.08
   );
-  vec2 p = st - blobCenter;
+  float r1 = (0.495 + 0.08 * sin(t * 0.15 + u_seed)) * rScale;
 
-  // Distance from center
-  float dist = length(p);
-  float angle = atan(p.y, p.x);
+  // Warp for organic shape
+  vec2 warp1 = vec2(
+    snoise(vec3(st * noiseScale, noiseTime)),
+    snoise(vec3(st * noiseScale + 5.0, noiseTime + 3.0))
+  ) * 0.25;
 
-  // Shape morphing — low frequency noise on the boundary only
-  float noiseTime = t * 0.3 + u_seed;
+  // Distance with warp applied
+  float d = length(st + warp1 - c1) / r1;
 
-  // Elliptical base that slowly rotates
-  float ellipseAngle = t * 0.08 + u_seed * 2.0;
-  float cosE = cos(ellipseAngle);
-  float sinE = sin(ellipseAngle);
-  vec2 rotP = vec2(p.x * cosE + p.y * sinE, -p.x * sinE + p.y * cosE);
-  // Stretch ratio changes over time
-  float stretch = 1.2 + 0.3 * sin(t * 0.1 + u_seed);
-  float ellipseDist = length(rotP * vec2(1.0, stretch));
+  // Gaussian-like fade: wide smooth falloff
+  float blobMask = smoothstep(2.5, 0.2, d);
 
-  // Strong shape distortion
-  float shapeDistort = 0.0;
-  shapeDistort += snoise(vec3(cos(angle) * 0.6, sin(angle) * 0.6, noiseTime)) * 0.25;
-  shapeDistort += snoise(vec3(cos(angle * 2.0) * 0.5 + 3.0, sin(angle * 2.0) * 0.5, noiseTime * 0.7 + 5.0)) * 0.12;
-  shapeDistort += snoise(vec3(cos(angle * 3.0) * 0.4 + 7.0, sin(angle * 3.0) * 0.4, noiseTime * 0.5 + 10.0)) * 0.06;
-  shapeDistort = clamp(shapeDistort, -0.22, 0.22);
-
-  // Blob boundary — elliptical base + clamped distortion
-  float blobRadius = 0.75 * rScale;
-  float d = ellipseDist / (blobRadius + shapeDistort * rScale);
-
-  // Gaussian-like fade: wide smooth falloff, no hard contours
-  // Wide opaque area, fade only at edges
-  float blobMask = smoothstep(1.4, 0.5, d);
-
-  // Color: clean diagonal gradient (no warp distortion on color)
-  // Variable rotation speed: min 0.10, max 0.25, modulated by noise
+  // Color: diagonal gradient with optional rotation
   float speedVar = 0.175 + 0.075 * snoise(vec3(t * 0.03, u_seed, 0.0));
   float rotAngle = speedVar * t;
   float gradAngle = mix(0.785, rotAngle, u_rotate);
@@ -182,7 +172,7 @@ void main() {
 
   // Mouse glow
   float mDist = length(uv - u_mouse);
-  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.20;
+  float mouseGlow = exp(-mDist * mDist * 4.0) * 0.30;
   color = mix(color, blobColor * 1.15, mouseGlow * blobMask);
 
   gl_FragColor = vec4(color, 1.0);

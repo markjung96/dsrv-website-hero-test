@@ -144,14 +144,14 @@ void main() {
 
   // Organic shape distortion via noise
   float noiseScale = 1.4;
-  float noiseTime = t * 0.45 + u_seed;
+  float noiseTime = t * 0.38 + u_seed;
 
   // Single large blob — center with more movement
   vec2 c1 = vec2(
-    halfAspect + sin(t * 0.12 + u_seed) * 0.10 * aspect,
-    0.5 + cos(t * 0.10 + u_seed * 1.3) * 0.08
+    halfAspect + sin(t * 0.102 + u_seed) * 0.10 * aspect,
+    0.5 + cos(t * 0.085 + u_seed * 1.3) * 0.08
   );
-  float r1 = (0.50 + 0.08 * sin(t * 0.20 + u_seed)) * rScale;
+  float r1 = (0.55 + 0.05 * sin(t * 0.17 + u_seed)) * rScale;
 
   // Warp for organic shape — stronger morphing
   vec2 warp1 = vec2(
@@ -173,7 +173,7 @@ void main() {
 
   // Color: diagonal gradient, 2-color (u_color2.r controls rotation: 0=fixed, 1=rotating)
   float rotateMode = u_color2.r;
-  float gradAngle = mix(0.785, t * 0.12, rotateMode);
+  float gradAngle = mix(0.785, t * 0.102, rotateMode);
   vec2 gradDir = vec2(cos(gradAngle), sin(gradAngle));
   float diag = dot(uv - 0.5, gradDir) + 0.5;
   vec3 blobColor = mix(u_color1, u_color3, smoothstep(0.2, 0.8, diag));
