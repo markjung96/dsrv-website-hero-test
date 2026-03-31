@@ -60,7 +60,19 @@ const VERSION_GROUPS: VersionGroup[] = [
     items: [
       { path: "/wave-mountain-a", label: "Wave Mountain (정적)", desc: "피그마 SVG 블롭 레이어" },
       { path: "/wave-mountain-f", label: "Wave Mountain Flame (소)", desc: "프로시저럴 불꽃 — 세밀한 일렁임" },
-      { path: "/wave-mountain-f2", label: "Wave Mountain Flame (대)", desc: "프로시저럴 불꽃 — 넓은 일렁임" },
+      { path: "/wave-mountain-f2", label: "Flame 블루바이올렛", desc: "#292BEC → #165DEC → #A4C0F9" },
+      { path: "/wave-mountain-f3", label: "Flame 다크", desc: "#0A0A0A → #0A0AAF → #154AC9" },
+      { path: "/wave-mountain-f4", label: "Flame (대) 다크 그라데이션", desc: "#0A0A0A → #0A0AAF → #154AC9 투명 블롭" },
+      { path: "/wave-mountain-f5", label: "Wave Mountain Flame (대) 원본", desc: "프로시저럴 불꽃 — 큰 스윕 + 수평 드리프트" },
+    ],
+  },
+  {
+    group: "Orb 그라데이션 (Figma V2)",
+    items: [
+      { path: "/orb-webgl", label: "Orb WebGL", desc: "WebGL 셰이더로 프로시저럴 재현" },
+      { path: "/orb-css", label: "Orb CSS", desc: "CSS mix-blend-mode + blur 레이어 합성" },
+      { path: "/orb-asset", label: "Orb Asset", desc: "Figma 에셋 픽셀 좌표 직접 배치" },
+      { path: "/orb-contour", label: "Orb Contour", desc: "Figma 등고선 오브 에셋 직접 사용" },
     ],
   },
 ];

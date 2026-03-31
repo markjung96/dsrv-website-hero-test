@@ -15,10 +15,6 @@ precision highp float;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_mouse;
-uniform vec3 u_c1; // deepest (top)
-uniform vec3 u_c2; // mid
-uniform vec3 u_c3; // light
-uniform vec3 u_c4; // accent/depth
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -68,101 +64,104 @@ float snoise(vec3 v) {
   return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
-// fbm removed for performance
-
-float flameBlob(vec2 uv, float cx, float width, float dropBase, float t, float seed, float aspect) {
-  float dx = (uv.x - cx) / width;
-  float hFalloff = exp(-dx * dx * 1.2);
-  float vy = 1.0 - uv.y;
-  vec2 flameUV = vec2(uv.x * aspect, vy);
-  float edge = dropBase
-    + snoise(vec3(flameUV.x * 0.3, seed * 3.0, t * 0.25)) * 0.32
-    + snoise(vec3(flameUV.x * 0.6, seed * 7.0 + vy * 0.2, t * 0.35)) * 0.22
-    + sin(flameUV.x * 0.8 + t * 0.40 + seed) * 0.08;
-  float vMask = 1.0 - smoothstep(edge - 0.12, edge + 0.22, vy);
-  return hFalloff * vMask;
+float fbm(vec3 p) {
+  return snoise(p) * 0.5 + snoise(p * 2.1) * 0.3 + snoise(p * 4.3) * 0.15 + snoise(p * 8.1) * 0.05;
 }
 
-// Multi-stop gradient: c1 (top) -> c2 -> c3 -> c4 (bottom)
-// First color occupies smaller region (15%), rest distributed evenly
-vec3 gradient4(float t, vec3 c1, vec3 c2, vec3 c3, vec3 c4) {
-  if (t < 0.15) return mix(c1, c2, t / 0.15);
-  if (t < 0.55) return mix(c2, c3, (t - 0.15) / 0.40);
-  return mix(c3, c4, (t - 0.55) / 0.45);
+// Flame-like blob: a wide soft shape with large-scale animated distortion
+float flameBlob(vec2 uv, float cx, float width, float dropBase, float t, float seed, float aspect) {
+  // Wide horizontal falloff
+  float dx = (uv.x - cx) / width;
+  float hFalloff = exp(-dx * dx * 1.2);
+
+  float vy = 1.0 - uv.y; // 0=top, 1=bottom
+
+  // Large-scale flame distortion: low freq = big sweep, high amp, faster speed
+  vec2 flameUV = vec2(uv.x * aspect, vy);
+  float edge = dropBase
+    + snoise(vec3(flameUV.x * 0.3, seed * 3.0, t * 0.25)) * 0.28
+    + snoise(vec3(flameUV.x * 0.6, seed * 7.0 + vy * 0.2, t * 0.35)) * 0.18
+    + snoise(vec3(flameUV.x * 1.2, seed * 11.0, t * 0.55)) * 0.10
+    + sin(flameUV.x * 0.8 + t * 0.40 + seed) * 0.08;
+
+  // Wide transition zone for soft, sweeping flame edge
+  float vMask = 1.0 - smoothstep(edge - 0.12, edge + 0.22, vy);
+
+  return hFalloff * vMask;
 }
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
-  float vy = 1.0 - uv.y; // 0=top, 1=bottom
+  float vy = 1.0 - uv.y;
   float t = u_time;
 
-  // --- 5 flame blobs (same animation as original) ---
-  float b1 = flameBlob(uv, 0.18 + sin(t * 0.10) * 0.15, 0.25, 0.32 + sin(t * 0.12) * 0.28, t, 1.0, aspect);
-  float b2 = flameBlob(uv, 0.80 + cos(t * 0.09 + 1.0) * 0.15, 0.22, 0.28 + cos(t * 0.12 + 1.5) * 0.28, t, 30.0, aspect);
-  float b3 = flameBlob(uv, 0.48 + sin(t * 0.11 + 2.0) * 0.18, 0.22, 0.42 + sin(t * 0.14 + 3.0) * 0.25, t, 60.0, aspect);
-  float b4 = flameBlob(uv, 0.35 + cos(t * 0.08 + 0.5) * 0.12, 0.18, 0.25 + cos(t * 0.13 + 0.8) * 0.20, t, 90.0, aspect);
-  float b5 = flameBlob(uv, 0.65 + sin(t * 0.075 + 1.5) * 0.12, 0.18, 0.22 + sin(t * 0.13 + 2.0) * 0.20, t, 120.0, aspect);
+  // --- Color palette (Figma: #014EEC, #2569F4, #3932B0) ---
+  vec3 deepBlue  = vec3(0.004, 0.306, 0.925);  // #014EEC
+  vec3 midBlue   = vec3(0.145, 0.412, 0.957);  // #2569F4
+  vec3 indigo    = vec3(0.224, 0.196, 0.690);  // #3932B0
+  vec3 lightBlue = vec3(0.40, 0.58, 0.95);
+  vec3 paleCyan  = vec3(0.70, 0.85, 0.96);
+  vec3 white     = vec3(1.0);
 
-  // --- Blobs displace gradient position upward (reveal deeper colors) ---
-  float totalDisplacement = b1 * 0.92 + b2 * 0.88 + b3 * 0.82 + b4 * 0.75 + b5 * 0.72;
-  float displaced_vy = clamp(vy - totalDisplacement * 0.5, 0.0, 1.0);
+  // --- Base: gradient background (starts deeper) ---
+  vec3 color = mix(midBlue, white, smoothstep(0.0, 0.75, vy));
 
-  // --- Sample gradient at displaced position ---
-  vec3 white = vec3(1.0);
-  vec3 gradCol = gradient4(displaced_vy, u_c1, u_c2, u_c3, u_c4);
+  // --- 3 wide flame blobs flowing from top ---
 
-  // --- Fade to white at bottom (where no blobs) ---
-  float bottomFade = smoothstep(0.5, 0.95, vy) * (1.0 - min(totalDisplacement, 1.0));
-  vec3 color = mix(gradCol, white, bottomFade);
+  // Blob 1: left peak — drifts right as it drops
+  float b1 = flameBlob(uv, 0.18 + sin(t * 0.06) * 0.08, 0.25, 0.32 + sin(t * 0.08) * 0.18, t, 1.0, aspect);
+  color = mix(color, deepBlue, b1 * 0.92);
 
-  // --- Top cap (subtle) ---
-  float topCap = smoothstep(0.08, 0.0, vy);
-  color = mix(color, u_c1, topCap * 0.5);
+  // Blob 2: right peak — drifts left (counter to B1)
+  float b2 = flameBlob(uv, 0.80 + cos(t * 0.055 + 1.0) * 0.08, 0.22, 0.28 + cos(t * 0.08 + 1.5) * 0.18, t, 30.0, aspect);
+  color = mix(color, mix(deepBlue, indigo, 0.3), b2 * 0.88);
 
-  // --- Flicker ---
+  // Blob 3: center tongue — sways side to side
+  float b3 = flameBlob(uv, 0.48 + sin(t * 0.07 + 2.0) * 0.10, 0.22, 0.42 + sin(t * 0.11 + 3.0) * 0.16, t, 60.0, aspect);
+  color = mix(color, midBlue, b3 * 0.82);
+
+  // Blob 4: left-center — drifts gently
+  float b4 = flameBlob(uv, 0.35 + cos(t * 0.05 + 0.5) * 0.06, 0.18, 0.25 + cos(t * 0.09 + 0.8) * 0.12, t, 90.0, aspect);
+  color = mix(color, deepBlue, b4 * 0.75);
+
+  // Blob 5: right-center — drifts gently
+  float b5 = flameBlob(uv, 0.65 + sin(t * 0.048 + 1.5) * 0.06, 0.18, 0.22 + sin(t * 0.10 + 2.0) * 0.12, t, 120.0, aspect);
+  color = mix(color, midBlue, b5 * 0.72);
+
+  // --- Top reinforcement: solid deep blue cap (wider) ---
+  float topCap = smoothstep(0.18, 0.0, vy);
+  color = mix(color, deepBlue, topCap);
+
+  // --- Flame flicker: global brightness pulse ---
   float blueness = max(b1, max(b2, max(b3, max(b4, b5))));
+
+  // --- Indigo depth layer across blue areas ---
+  color = mix(color, indigo, blueness * 0.20);
   float flicker = 0.96 + 0.04 * snoise(vec3(uv.x * aspect * 0.5, vy * 0.3, t * 2.2));
   color *= mix(1.0, flicker, blueness);
 
-  // --- Bottom wash ---
-  vec3 paleTint = mix(u_c3, white, 0.5);
-  float bottomWash = smoothstep(0.7, 0.95, vy) * (1.0 - blueness);
-  color = mix(color, paleTint, bottomWash * 0.2);
+  // --- Organic depth texture ---
+  float depth = fbm(vec3(uv.x * aspect * 0.7, vy * 0.4, t * 0.012));
+  color += deepBlue * depth * 0.05 * blueness;
+
+  // --- Bottom cyan wash ---
+  float bottomWash = smoothstep(0.6, 0.9, vy) * (1.0 - blueness);
+  color = mix(color, paleCyan, bottomWash * 0.25);
 
   // --- Mouse glow ---
   float mDist = length(gl_FragCoord.xy / u_resolution - u_mouse);
   float mouseGlow = exp(-mDist * mDist * 5.0) * 0.08;
-  color = mix(color, u_c2, mouseGlow);
+  color = mix(color, midBlue, mouseGlow);
 
   gl_FragColor = vec4(color, 1.0);
 }
 `;
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [
-    parseInt(h.substring(0, 2), 16) / 255,
-    parseInt(h.substring(2, 4), 16) / 255,
-    parseInt(h.substring(4, 6), 16) / 255,
-  ];
-}
-
-interface FlameAuroraProps {
-  /** 3-4 hex colors, top (deepest) to bottom (lightest).
-   *  [0] = deep/top, [1] = mid, [2] = light, [3] = accent (optional, defaults to darker [0]) */
-  colors?: string[];
-  className?: string;
-}
-
-const DEFAULT_COLORS = ["#014EEC", "#2569F4", "#A4C0F9", "#3932B0"];
-
-export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, className }: FlameAuroraProps) {
+export default function FlameAuroraOriginalLargeBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const mouseRef = useRef<[number, number]>([0.5, 0.5]);
-  const colorsRef = useRef(colors);
-  colorsRef.current = colors;
 
   const initWebGL = useCallback(() => {
     const canvas = canvasRef.current;
@@ -218,13 +217,9 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
     const uTime = gl.getUniformLocation(program, "u_time");
     const uResolution = gl.getUniformLocation(program, "u_resolution");
     const uMouse = gl.getUniformLocation(program, "u_mouse");
-    const uC1 = gl.getUniformLocation(program, "u_c1");
-    const uC2 = gl.getUniformLocation(program, "u_c2");
-    const uC3 = gl.getUniformLocation(program, "u_c3");
-    const uC4 = gl.getUniformLocation(program, "u_c4");
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio, 1);
+      const dpr = Math.min(window.devicePixelRatio, 2);
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
@@ -255,13 +250,6 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
 
     function render() {
       if (!canvas || !gl) return;
-
-      const c = colorsRef.current;
-      const c1 = hexToRgb(c[0] || "#014EEC");
-      const c2 = hexToRgb(c[1] || "#2569F4");
-      const c3 = hexToRgb(c[2] || "#A4C0F9");
-      const c4 = c[3] ? hexToRgb(c[3]) : [c1[0] * 0.7, c1[1] * 0.6, c1[2] * 0.8] as [number, number, number];
-
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.useProgram(program);
 
@@ -272,10 +260,6 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
       gl.uniform1f(uTime, (performance.now() - startTime) / 1000);
       gl.uniform2f(uResolution, canvas.width, canvas.height);
       gl.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
-      gl.uniform3f(uC1, c1[0], c1[1], c1[2]);
-      gl.uniform3f(uC2, c2[0], c2[1], c2[2]);
-      gl.uniform3f(uC3, c3[0], c3[1], c3[2]);
-      gl.uniform3f(uC4, c4[0], c4[1], c4[2]);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
@@ -298,7 +282,7 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
   return (
     <canvas
       ref={canvasRef}
-      className={`absolute inset-0 w-full h-full ${className || ""}`}
+      className="absolute inset-0 w-full h-full"
       style={{ display: "block" }}
     />
   );

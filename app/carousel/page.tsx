@@ -1,6 +1,5 @@
 "use client";
 
-import ContourBlobBackground from "../components/ContourBlobBackground";
 import Carousel3D from "../components/Carousel3D";
 import VersionSelector from "../components/VersionSelector";
 
@@ -30,7 +29,16 @@ const heroes = [
 export default function CarouselPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-white">
-      <ContourBlobBackground variant="allThatNode" />
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{ zIndex: 0 }}
+      >
+        <img
+          src="/hero-bg.svg"
+          alt=""
+          className="w-[80vw] max-w-[1200px] h-auto"
+        />
+      </div>
 
       <VersionSelector />
 

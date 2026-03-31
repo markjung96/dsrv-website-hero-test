@@ -1,12 +1,12 @@
 "use client";
 
 import VersionSelector from "../components/VersionSelector";
-import FlameAuroraBackground from "../components/FlameAuroraBackground";
+import FlameAuroraOriginalLargeBackground from "../components/FlameAuroraOriginalLargeBackground";
 
-export default function WaveMountainFlame2Page() {
+export default function WaveMountainFlame5Page() {
   return (
     <main className="relative h-screen overflow-hidden">
-      <FlameAuroraBackground colors={["#292BEC", "#165DEC", "#A4C0F9", "#2925A6"]} />
+      <FlameAuroraOriginalLargeBackground />
 
       {/* Vertical stripe overlay */}
       <div

@@ -100,18 +100,18 @@ void main() {
   // --- Base: gradient background (starts deeper) ---
   vec3 color = mix(midBlue, white, smoothstep(0.0, 0.75, vy));
 
-  // --- 6 flame blobs flowing from top ---
-  float b1 = flameBlob(uv, 0.32, 0.38, 0.55 + sin(t * 0.06) * 0.04, t, 1.0, aspect);
+  // --- 6 flame blobs flowing from top (bigger movement) ---
+  float b1 = flameBlob(uv, 0.32, 0.38, 0.55 + sin(t * 0.12) * 0.12, t, 1.0, aspect);
   color = mix(color, deepBlue, b1 * 0.88);
-  float b2 = flameBlob(uv, 0.70, 0.32, 0.48 + cos(t * 0.05) * 0.05, t, 20.0, aspect);
+  float b2 = flameBlob(uv, 0.70, 0.32, 0.48 + cos(t * 0.10) * 0.14, t, 20.0, aspect);
   color = mix(color, deepBlue, b2 * 0.82);
-  float b3 = flameBlob(uv, 0.52, 0.28, 0.62 + sin(t * 0.07) * 0.04, t, 40.0, aspect);
+  float b3 = flameBlob(uv, 0.52, 0.28, 0.62 + sin(t * 0.14) * 0.12, t, 40.0, aspect);
   color = mix(color, midBlue, b3 * 0.78);
-  float b4 = flameBlob(uv, 0.10, 0.22, 0.42 + cos(t * 0.04) * 0.04, t, 60.0, aspect);
+  float b4 = flameBlob(uv, 0.10, 0.22, 0.42 + cos(t * 0.08) * 0.13, t, 60.0, aspect);
   color = mix(color, deepBlue, b4 * 0.72);
-  float b5 = flameBlob(uv, 0.88, 0.24, 0.44 + sin(t * 0.055) * 0.05, t, 80.0, aspect);
+  float b5 = flameBlob(uv, 0.88, 0.24, 0.44 + sin(t * 0.11) * 0.14, t, 80.0, aspect);
   color = mix(color, midBlue, b5 * 0.68);
-  float b6 = flameBlob(uv, 0.40, 0.20, 0.35 + cos(t * 0.065) * 0.03, t, 100.0, aspect);
+  float b6 = flameBlob(uv, 0.40, 0.20, 0.35 + cos(t * 0.13) * 0.10, t, 100.0, aspect);
   color = mix(color, indigo, b6 * 0.35);
 
   // --- Top reinforcement: solid deep blue cap (wider) ---

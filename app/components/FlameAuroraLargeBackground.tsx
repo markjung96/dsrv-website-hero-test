@@ -15,10 +15,9 @@ precision highp float;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_mouse;
-uniform vec3 u_c1; // deepest (top)
-uniform vec3 u_c2; // mid
-uniform vec3 u_c3; // light
-uniform vec3 u_c4; // accent/depth
+uniform vec3 u_c1;
+uniform vec3 u_c2;
+uniform vec3 u_c3;
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -70,70 +69,62 @@ float snoise(vec3 v) {
 
 // fbm removed for performance
 
+// Flame-like blob: a wide soft shape with large-scale animated distortion
 float flameBlob(vec2 uv, float cx, float width, float dropBase, float t, float seed, float aspect) {
+  // Wide horizontal falloff
   float dx = (uv.x - cx) / width;
   float hFalloff = exp(-dx * dx * 1.2);
-  float vy = 1.0 - uv.y;
+
+  float vy = 1.0 - uv.y; // 0=top, 1=bottom
+
+  // Large-scale flame distortion (2 octaves + sin for performance)
   vec2 flameUV = vec2(uv.x * aspect, vy);
   float edge = dropBase
     + snoise(vec3(flameUV.x * 0.3, seed * 3.0, t * 0.25)) * 0.32
     + snoise(vec3(flameUV.x * 0.6, seed * 7.0 + vy * 0.2, t * 0.35)) * 0.22
     + sin(flameUV.x * 0.8 + t * 0.40 + seed) * 0.08;
-  float vMask = 1.0 - smoothstep(edge - 0.12, edge + 0.22, vy);
-  return hFalloff * vMask;
-}
 
-// Multi-stop gradient: c1 (top) -> c2 -> c3 -> c4 (bottom)
-// First color occupies smaller region (15%), rest distributed evenly
-vec3 gradient4(float t, vec3 c1, vec3 c2, vec3 c3, vec3 c4) {
-  if (t < 0.15) return mix(c1, c2, t / 0.15);
-  if (t < 0.55) return mix(c2, c3, (t - 0.15) / 0.40);
-  return mix(c3, c4, (t - 0.55) / 0.45);
+  // Wide transition zone for soft, sweeping flame edge (extra blur at bottom)
+  float vMask = 1.0 - smoothstep(edge - 0.18, edge + 0.65, vy);
+
+  return hFalloff * vMask;
 }
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
   float aspect = u_resolution.x / u_resolution.y;
-  float vy = 1.0 - uv.y; // 0=top, 1=bottom
+  float vy = 1.0 - uv.y;
   float t = u_time;
 
-  // --- 5 flame blobs (same animation as original) ---
-  float b1 = flameBlob(uv, 0.18 + sin(t * 0.10) * 0.15, 0.25, 0.32 + sin(t * 0.12) * 0.28, t, 1.0, aspect);
-  float b2 = flameBlob(uv, 0.80 + cos(t * 0.09 + 1.0) * 0.15, 0.22, 0.28 + cos(t * 0.12 + 1.5) * 0.28, t, 30.0, aspect);
-  float b3 = flameBlob(uv, 0.48 + sin(t * 0.11 + 2.0) * 0.18, 0.22, 0.42 + sin(t * 0.14 + 3.0) * 0.25, t, 60.0, aspect);
-  float b4 = flameBlob(uv, 0.35 + cos(t * 0.08 + 0.5) * 0.12, 0.18, 0.25 + cos(t * 0.13 + 0.8) * 0.20, t, 90.0, aspect);
-  float b5 = flameBlob(uv, 0.65 + sin(t * 0.075 + 1.5) * 0.12, 0.18, 0.22 + sin(t * 0.13 + 2.0) * 0.20, t, 120.0, aspect);
+  // --- 3-color gradient layer: c1 (top) → c2 (mid) → c3 (bottom) ---
+  vec3 grad = mix(u_c1, u_c2, smoothstep(0.0, 0.45, vy));
+  grad = mix(grad, u_c3, smoothstep(0.45, 0.9, vy));
 
-  // --- Blobs displace gradient position upward (reveal deeper colors) ---
-  float totalDisplacement = b1 * 0.92 + b2 * 0.88 + b3 * 0.82 + b4 * 0.75 + b5 * 0.72;
-  float displaced_vy = clamp(vy - totalDisplacement * 0.5, 0.0, 1.0);
+  // --- 5 flame blobs: mountain shape (center tall, edges short, wider coverage) ---
+  float b1 = flameBlob(uv, 0.02 + sin(t * 0.04) * 0.06, 0.28, 0.20 + sin(t * 0.07) * 0.10, t, 1.0, aspect);
+  float b2 = flameBlob(uv, 0.98 + cos(t * 0.045) * 0.06, 0.28, 0.18 + cos(t * 0.06) * 0.10, t, 30.0, aspect);
+  float b3 = flameBlob(uv, 0.48 + sin(t * 0.07 + 2.0) * 0.10, 0.34, 0.50 + sin(t * 0.11 + 3.0) * 0.16, t, 60.0, aspect);
+  float b4 = flameBlob(uv, 0.24 + cos(t * 0.05 + 0.5) * 0.08, 0.30, 0.30 + cos(t * 0.09 + 0.8) * 0.14, t, 90.0, aspect);
+  float b5 = flameBlob(uv, 0.76 + sin(t * 0.048 + 1.5) * 0.08, 0.30, 0.28 + sin(t * 0.10 + 2.0) * 0.14, t, 120.0, aspect);
 
-  // --- Sample gradient at displaced position ---
+  // --- Combined blueness as single organism (additive) ---
+  float blueness = clamp(b1 + b2 + b3 + b4 + b5, 0.0, 1.0);
+
+  // --- Base: light gradient background ---
   vec3 white = vec3(1.0);
-  vec3 gradCol = gradient4(displaced_vy, u_c1, u_c2, u_c3, u_c4);
+  vec3 color = mix(u_c3, white, smoothstep(0.0, 0.75, vy));
 
-  // --- Fade to white at bottom (where no blobs) ---
-  float bottomFade = smoothstep(0.5, 0.95, vy) * (1.0 - min(totalDisplacement, 1.0));
-  vec3 color = mix(gradCol, white, bottomFade);
+  // --- Mix blob gradient into base using blueness ---
+  color = mix(color, grad, blueness);
 
-  // --- Top cap (subtle) ---
-  float topCap = smoothstep(0.08, 0.0, vy);
-  color = mix(color, u_c1, topCap * 0.5);
-
-  // --- Flicker ---
-  float blueness = max(b1, max(b2, max(b3, max(b4, b5))));
+  // --- Flame flicker: global brightness pulse ---
   float flicker = 0.96 + 0.04 * snoise(vec3(uv.x * aspect * 0.5, vy * 0.3, t * 2.2));
   color *= mix(1.0, flicker, blueness);
 
-  // --- Bottom wash ---
-  vec3 paleTint = mix(u_c3, white, 0.5);
-  float bottomWash = smoothstep(0.7, 0.95, vy) * (1.0 - blueness);
-  color = mix(color, paleTint, bottomWash * 0.2);
-
   // --- Mouse glow ---
   float mDist = length(gl_FragCoord.xy / u_resolution - u_mouse);
-  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.08;
-  color = mix(color, u_c2, mouseGlow);
+  float mouseGlow = exp(-mDist * mDist * 5.0) * 0.10;
+  color = mix(color, u_c3, mouseGlow);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -148,16 +139,15 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-interface FlameAuroraProps {
-  /** 3-4 hex colors, top (deepest) to bottom (lightest).
-   *  [0] = deep/top, [1] = mid, [2] = light, [3] = accent (optional, defaults to darker [0]) */
+interface FlameAuroraLargeProps {
+  /** 3 hex colors: [0] top/deepest, [1] mid, [2] bottom/lightest */
   colors?: string[];
   className?: string;
 }
 
-const DEFAULT_COLORS = ["#014EEC", "#2569F4", "#A4C0F9", "#3932B0"];
+const DEFAULT_COLORS = ["#0A0A0A", "#0A0AAF", "#154AC9"];
 
-export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, className }: FlameAuroraProps) {
+export default function FlameAuroraLargeBackground({ colors = DEFAULT_COLORS, className }: FlameAuroraLargeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const mouseRef = useRef<[number, number]>([0.5, 0.5]);
@@ -221,7 +211,6 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
     const uC1 = gl.getUniformLocation(program, "u_c1");
     const uC2 = gl.getUniformLocation(program, "u_c2");
     const uC3 = gl.getUniformLocation(program, "u_c3");
-    const uC4 = gl.getUniformLocation(program, "u_c4");
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio, 1);
@@ -252,15 +241,24 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
     window.addEventListener("mouseleave", handleMouseLeave);
 
     const startTime = performance.now();
+    let isVisible = true;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible && !rafRef.current) {
+          rafRef.current = requestAnimationFrame(render);
+        }
+      },
+      { threshold: 0 }
+    );
+    observer.observe(canvas);
 
     function render() {
-      if (!canvas || !gl) return;
-
-      const c = colorsRef.current;
-      const c1 = hexToRgb(c[0] || "#014EEC");
-      const c2 = hexToRgb(c[1] || "#2569F4");
-      const c3 = hexToRgb(c[2] || "#A4C0F9");
-      const c4 = c[3] ? hexToRgb(c[3]) : [c1[0] * 0.7, c1[1] * 0.6, c1[2] * 0.8] as [number, number, number];
+      if (!canvas || !gl || !isVisible) {
+        rafRef.current = 0;
+        return;
+      }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.useProgram(program);
@@ -272,10 +270,14 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
       gl.uniform1f(uTime, (performance.now() - startTime) / 1000);
       gl.uniform2f(uResolution, canvas.width, canvas.height);
       gl.uniform2f(uMouse, mouseRef.current[0], mouseRef.current[1]);
+
+      const c = colorsRef.current;
+      const c1 = hexToRgb(c[0] || DEFAULT_COLORS[0]);
+      const c2 = hexToRgb(c[1] || DEFAULT_COLORS[1]);
+      const c3 = hexToRgb(c[2] || DEFAULT_COLORS[2]);
       gl.uniform3f(uC1, c1[0], c1[1], c1[2]);
       gl.uniform3f(uC2, c2[0], c2[1], c2[2]);
       gl.uniform3f(uC3, c3[0], c3[1], c3[2]);
-      gl.uniform3f(uC4, c4[0], c4[1], c4[2]);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       rafRef.current = requestAnimationFrame(render);
@@ -285,6 +287,7 @@ export default function FlameAuroraBackground({ colors = DEFAULT_COLORS, classNa
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      observer.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
